@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "560952045923",
+    "project_id": "alert-f9809",
+    "storage_bucket": "alert-f9809.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560952045923:android:c7f46e8f70086ecb106356",
+        "android_client_info": {
+          "package_name": "com.example.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDocBr9i7Zwpwbq_b6yT-a1uJWIFLR_HQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

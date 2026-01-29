@@ -1,0 +1,42 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model cache
+models/cache/
+*.pt
+*.pth
+
+# Videos (large files)
+videos/*.mp4
+videos/*.avi
+videos/*.mov
+!videos/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Alert frames
+alerts/
+
+# Firebase credentials (SECURITY - DO NOT COMMIT)
+*firebase*.json
+firebase_key.json
