@@ -33,12 +33,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final AlertProvider _alertProvider = AlertProvider();
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final FCMService _fcmService;
 
   @override
   void initState() {
     super.initState();
-    _fcmService = FCMService(_alertProvider);
+    _fcmService = FCMService(_alertProvider, _navigatorKey);
     _initializeFCM();
   }
 
@@ -54,6 +55,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Violence Detection',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

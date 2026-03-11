@@ -17,10 +17,11 @@ class Config:
     
     # API Configuration
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
     # Model Configuration
     EDGE_MODEL_ID = "vikhyatk/moondream2"
-    CLOUD_MODEL_ID = "gemini-flash-lite-latest"
+    CLOUD_MODEL_ID = "llama-3.3-70b-versatile"
     
     # Device Configuration
     DEVICE = os.getenv("DEVICE", "auto")  # "cuda", "cpu", or "auto"
@@ -44,6 +45,18 @@ class Config:
     FCM_TOPIC = os.getenv("FCM_TOPIC", "violence_alerts")
 
     
+    # A2A (Agent-to-Agent) Communication
+    ENABLE_A2A = os.getenv("ENABLE_A2A", "false").lower() == "true"
+    EDGE_AGENT_URL = os.getenv("EDGE_AGENT_URL", "http://localhost:8001")
+    CLOUD_AGENT_URL = os.getenv("CLOUD_AGENT_URL", "http://localhost:8002")
+    RAG_AGENT_URL = os.getenv("RAG_AGENT_URL", "http://localhost:8003")
+
+    # RAG (Retrieval-Augmented Generation)
+    ENABLE_RAG = os.getenv("ENABLE_RAG", "true").lower() == "true"
+    RAG_DB_DIR = BASE_DIR / os.getenv("RAG_DB_DIR", "rag_db")
+    RAG_EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
+
     # Frame Processing
     MOTION_BLUR_KERNEL = (5, 5)
     MOTION_BINARY_THRESHOLD = 20
@@ -54,8 +67,8 @@ class Config:
         """Validate critical configuration values."""
         errors = []
         
-        if not cls.GEMINI_API_KEY:
-            errors.append("❌ GEMINI_API_KEY not set in .env file")
+        if not cls.GROQ_API_KEY:
+            errors.append("❌ GROQ_API_KEY not set in .env file")
         
         if not Path(cls.VIDEO_PATH).exists():
             errors.append(f"❌ Video file not found: {cls.VIDEO_PATH}")
@@ -94,4 +107,10 @@ class Config:
         if cls.SAVE_ALERTS:
             print(f"Alerts Directory: {cls.ALERTS_DIR}")
             print(f"Buffer Duration: {cls.BUFFER_DURATION_SECONDS}s")
+        print(f"A2A Mode: {'Networked' if cls.ENABLE_A2A else 'Direct (local)'}")
+        if cls.ENABLE_A2A:
+            print(f"Edge Agent: {cls.EDGE_AGENT_URL}")
+            print(f"Cloud Agent: {cls.CLOUD_AGENT_URL}")
+            print(f"RAG Agent: {cls.RAG_AGENT_URL}")
+        print(f"RAG: {'Enabled' if cls.ENABLE_RAG else 'Disabled'}")
         print("="*60 + "\n")

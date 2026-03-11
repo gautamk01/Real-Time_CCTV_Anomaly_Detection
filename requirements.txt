@@ -10,9 +10,25 @@
 # pillow>=10.0.0
 # opencv-python>=4.8.0
 
+# AI Models
+openai>=1.0.0
+
 # Data & Config
 pandas>=2.0.0
 python-dotenv>=1.0.0
 
 # Firebase Cloud Messaging
 firebase-admin>=6.0.0
+
+# Benchmarking
+matplotlib>=3.7.0
+
+# A2A (Agent-to-Agent) Communication
+fastapi>=0.100.0
+uvicorn>=0.23.0
+httpx>=0.24.0
+pydantic>=2.0.0
+
+# RAG (Retrieval-Augmented Generation)
+chromadb>=0.4.0
+sentence-transformers>=2.2.0

@@ -1,6 +1,6 @@
 # Environment variables
 .env
-
+.agent
 # Python
 __pycache__/
 *.py[cod]
@@ -14,6 +14,7 @@ env/
 ENV/
 
 # IDE
+*.md
 .vscode/
 .idea/
 *.swp

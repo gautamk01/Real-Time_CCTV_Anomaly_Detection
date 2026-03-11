@@ -1,0 +1,227 @@
+{
+  "benchmark_info": {
+    "timestamp": "2026-03-01T13:08:15.203308",
+    "video_file": "videos/test_video_2.mp4",
+    "annotations_file": "annotations/test_video_2.json",
+    "investigate_as": "VIOLENCE"
+  },
+  "confusion_matrix": {
+    "tp": 4,
+    "fp": 0,
+    "tn": 2,
+    "fn": 0,
+    "total": 6,
+    "excluded": 0,
+    "unmatched": 0,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "specificity": 1.0,
+    "f1_score": 1.0,
+    "fpr": 0.0,
+    "fnr": 0.0,
+    "investigate_as": "VIOLENCE"
+  },
+  "roc_curve_data": [
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.5,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.5,
+      "tpr": 0.0
+    }
+  ],
+  "latency_summary": {
+    "total_investigations": 6,
+    "status_distribution": {
+      "CLEAR": 2,
+      "INVESTIGATE": 0,
+      "ALERT": 4
+    },
+    "edge_latency_ms": {
+      "mean": 2318.28,
+      "p50": 2412.77,
+      "p95": 2470.26,
+      "min": 1788.97,
+      "max": 2470.26
+    },
+    "cloud_latency_ms": {
+      "mean": 2250.25,
+      "p50": 1581.04,
+      "p95": 5634.26,
+      "min": 1529.48,
+      "max": 5634.26
+    },
+    "total_investigation_ms": {
+      "mean": 4570.76,
+      "p50": 4011.41,
+      "p95": 8011.57,
+      "min": 3360.45,
+      "max": 8011.57
+    },
+    "estimated_tokens_per_call": {
+      "mean": 67,
+      "p50": 72.5,
+      "p95": 81,
+      "min": 29,
+      "max": 81
+    },
+    "total_tokens_consumed": 402,
+    "confidence": {
+      "mean": 95,
+      "p50": 95.0,
+      "p95": 100,
+      "min": 90,
+      "max": 100
+    },
+    "avg_rounds": 1,
+    "peak_ram_mb": 988.76,
+    "peak_gpu_mb": 4209.21
+  },
+  "confidence_distribution": {
+    "0-10": 0,
+    "10-20": 0,
+    "20-30": 0,
+    "30-40": 0,
+    "40-50": 0,
+    "50-60": 0,
+    "60-70": 0,
+    "70-80": 0,
+    "80-90": 0,
+    "90-100": 5,
+    "100": 1
+  },
+  "investigations": [
+    {
+      "timestamp": "00:00:02",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The scene shows three people exhibiting normal movement (walking and standing) with no signs of physical contact or aggression detected in the current observations."
+    },
+    {
+      "timestamp": "00:00:10",
+      "status": "ALERT",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Critical Rule 1 violation: A person is lying on the ground [00:00:10], which mandates an immediate ALERT regardless of surrounding activity."
+    },
+    {
+      "timestamp": "00:00:15",
+      "status": "ALERT",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Critical Rule 1 violation: A person is lying on the ground, appearing injured or unconscious [00:00:15], which mandates an immediate ALERT regardless of approaching individuals."
+    },
+    {
+      "timestamp": "00:00:23",
+      "status": "ALERT",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Critical Rule 1 violation: A person is lying on the ground [00:00:23], which mandates an immediate ALERT regardless of surrounding activity."
+    },
+    {
+      "timestamp": "00:00:35",
+      "status": "ALERT",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Critical Rule 1 activated: A person is lying on the ground, appearing unconscious or injured [00:00:35], which mandates an immediate ALERT."
+    },
+    {
+      "timestamp": "00:00:40",
+      "status": "CLEAR",
+      "confidence": 100,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 3,
+      "rounds": 1,
+      "reason": "The log indicates no persons are present and there are no signs of physical contact or aggression."
+    }
+  ]
+}

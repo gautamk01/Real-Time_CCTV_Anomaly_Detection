@@ -1,0 +1,68 @@
+{
+  "video_file": "videos/test_video_3.mp4",
+  "annotations": [
+    {
+      "id": 1,
+      "start_time": "00:00:00",
+      "end_time": "00:00:05",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "start_time": "00:00:05",
+      "end_time": "00:00:26",
+      "label": "VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 3,
+      "start_time": "00:00:26",
+      "end_time": "00:00:29",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 4,
+      "start_time": "00:00:29",
+      "end_time": "00:00:45",
+      "label": "VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 5,
+      "start_time": "00:00:45",
+      "end_time": "00:00:45",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 6,
+      "start_time": "00:00:45",
+      "end_time": "00:00:47",
+      "label": "VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 7,
+      "start_time": "00:00:47",
+      "end_time": "00:01:13",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 8,
+      "start_time": "00:01:13",
+      "end_time": "00:01:23",
+      "label": "VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 9,
+      "start_time": "00:01:23",
+      "end_time": "00:01:29",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    }
+  ]
+}

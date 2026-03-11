@@ -1,0 +1,308 @@
+{
+  "benchmark_info": {
+    "timestamp": "2026-03-01T13:15:13.662165",
+    "video_file": "videos/test_video.mp4",
+    "annotations_file": "annotations/test_video.json",
+    "investigate_as": "VIOLENCE"
+  },
+  "confusion_matrix": {
+    "tp": 5,
+    "fp": 1,
+    "tn": 9,
+    "fn": 0,
+    "total": 15,
+    "excluded": 0,
+    "unmatched": 0,
+    "accuracy": 0.9333,
+    "precision": 0.8333,
+    "recall": 1.0,
+    "specificity": 0.9,
+    "f1_score": 0.9091,
+    "fpr": 0.1,
+    "fnr": 0.0,
+    "investigate_as": "VIOLENCE"
+  },
+  "roc_curve_data": [
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.9,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.1,
+      "tpr": 0.8
+    },
+    {
+      "fpr": 0.1,
+      "tpr": 0.6
+    }
+  ],
+  "latency_summary": {
+    "total_investigations": 15,
+    "status_distribution": {
+      "CLEAR": 9,
+      "INVESTIGATE": 0,
+      "ALERT": 6
+    },
+    "edge_latency_ms": {
+      "mean": 1955.03,
+      "p50": 2035.18,
+      "p95": 2534.63,
+      "min": 492.55,
+      "max": 2534.63
+    },
+    "cloud_latency_ms": {
+      "mean": 3046.34,
+      "p50": 1757.77,
+      "p95": 7527.98,
+      "min": 1625.18,
+      "max": 7527.98
+    },
+    "total_investigation_ms": {
+      "mean": 6003.2,
+      "p50": 4047.03,
+      "p95": 18148.37,
+      "min": 3568.64,
+      "max": 18148.37
+    },
+    "estimated_tokens_per_call": {
+      "mean": 77.83,
+      "p50": 68.0,
+      "p95": 244,
+      "min": 29,
+      "max": 244
+    },
+    "total_tokens_consumed": 1401,
+    "confidence": {
+      "mean": 90.33,
+      "p50": 90,
+      "p95": 100,
+      "min": 50,
+      "max": 100
+    },
+    "avg_rounds": 1.2,
+    "peak_ram_mb": 995.36,
+    "peak_gpu_mb": 4346.09
+  },
+  "confidence_distribution": {
+    "0-10": 0,
+    "10-20": 0,
+    "20-30": 0,
+    "30-40": 0,
+    "40-50": 0,
+    "50-60": 1,
+    "60-70": 0,
+    "70-80": 0,
+    "80-90": 0,
+    "90-100": 10,
+    "100": 4
+  },
+  "investigations": [
+    {
+      "timestamp": "00:00:02",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The scene is calm with conversation, walking, and motorcycles, showing no signs of aggression or violence per [00:00:02]."
+    },
+    {
+      "timestamp": "00:00:13",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observations describe a casual social gathering with people interacting near motorcycles, matching 'CLEAR' criteria for normal activities. No signs of aggression or distress were noted."
+    },
+    {
+      "timestamp": "00:00:25",
+      "status": "CLEAR",
+      "confidence": 50,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The log only indicates people near motorcycles engaged in various activities, suggesting a normal street scene without immediate danger."
+    },
+    {
+      "timestamp": "00:00:35",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observations describe normal social interaction, with people walking and conversing."
+    },
+    {
+      "timestamp": "00:00:39",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observations indicate people walking, conversing, and engaging in friendly physical interaction, consistent with normal social activity."
+    },
+    {
+      "timestamp": "00:00:45",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observations describe a normal social gathering with people conversing and walking, showing no visible signs of physical contact or aggression."
+    },
+    {
+      "timestamp": "00:00:56",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observation shows two people walking and conversing, which aligns with normal social interaction and no violence indicators are present."
+    },
+    {
+      "timestamp": "00:01:00",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "Active fight or struggle detected immediately at [00:01:00], triggering Critical Rule 2 and the Active Violence trigger."
+    },
+    {
+      "timestamp": "00:01:03",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The observation log indicates several people walking together with no visible physical contact or aggression, aligning with normal social activity."
+    },
+    {
+      "timestamp": "00:01:09",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "The scene shows several people walking together with no visible physical contact or aggression, indicating normal activity."
+    },
+    {
+      "timestamp": "00:01:13",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 2,
+      "reason": "Active violence confirmed: Aggressive movements escalated into direct physical striking and throwing objects [00:01:15]."
+    },
+    {
+      "timestamp": "00:01:19",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Active physical altercation involving fighting, being knocked down, and struggling is observed at [00:01:19], triggering immediate ALERT based on Active Violence criteria."
+    },
+    {
+      "timestamp": "00:01:28",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 3,
+      "reason": "Observation at [00:01:38] confirms individuals are showing signs of extreme physical aggression, including throwing a punch or forceful shove, which triggers an immediate ALERT based on Active Violence criteria."
+    },
+    {
+      "timestamp": "00:01:46",
+      "status": "ALERT",
+      "confidence": 90,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Observation shows a person potentially attacking or pushing another, which meets the criteria for active aggression requiring immediate alert."
+    },
+    {
+      "timestamp": "00:01:50",
+      "status": "ALERT",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Observation indicates people running from a scene where physical conflict occurred, suggesting one person may be injured or unconscious, triggering Critical Rule 1 (person on ground/injured)."
+    }
+  ]
+}

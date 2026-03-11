@@ -1,0 +1,281 @@
+{
+  "benchmark_info": {
+    "timestamp": "2026-03-02T10:39:33.116899",
+    "video_file": "videos/test_video_3.mp4",
+    "annotations_file": "annotations/test_video_3.json",
+    "investigate_as": "VIOLENCE"
+  },
+  "confusion_matrix": {
+    "tp": 4,
+    "fp": 1,
+    "tn": 2,
+    "fn": 5,
+    "total": 12,
+    "excluded": 0,
+    "unmatched": 0,
+    "accuracy": 0.5,
+    "precision": 0.8,
+    "recall": 0.4444,
+    "specificity": 0.6667,
+    "f1_score": 0.5714,
+    "fpr": 0.3333,
+    "fnr": 0.5556,
+    "investigate_as": "VIOLENCE"
+  },
+  "roc_curve_data": [
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    },
+    {
+      "fpr": 0.6666666666666666,
+      "tpr": 0.7777777777777778
+    },
+    {
+      "fpr": 0.6666666666666666,
+      "tpr": 0.6666666666666666
+    },
+    {
+      "fpr": 0.0,
+      "tpr": 0.2222222222222222
+    }
+  ],
+  "latency_summary": {
+    "total_investigations": 12,
+    "status_distribution": {
+      "CLEAR": 7,
+      "INVESTIGATE": 0,
+      "ALERT": 5
+    },
+    "edge_latency_ms": {
+      "mean": 2217.55,
+      "p50": 2647.96,
+      "p95": 3016.44,
+      "min": 489.57,
+      "max": 3016.44
+    },
+    "cloud_latency_ms": {
+      "mean": 1356.14,
+      "p50": 1351.27,
+      "p95": 1435.9,
+      "min": 1317.73,
+      "max": 1435.9
+    },
+    "total_investigation_ms": {
+      "mean": 5064.53,
+      "p50": 4309.35,
+      "p95": 7495.41,
+      "min": 3677.2,
+      "max": 7495.41
+    },
+    "estimated_tokens_per_call": {
+      "mean": 119.06,
+      "p50": 105,
+      "p95": 264,
+      "min": 66,
+      "max": 264
+    },
+    "total_tokens_consumed": 2024,
+    "confidence": {
+      "mean": 92.92,
+      "p50": 95.0,
+      "p95": 100,
+      "min": 85,
+      "max": 100
+    },
+    "avg_rounds": 1.42,
+    "peak_ram_mb": 994.85,
+    "peak_gpu_mb": 4346.09
+  },
+  "confidence_distribution": {
+    "0-10": 0,
+    "10-20": 0,
+    "20-30": 0,
+    "30-40": 0,
+    "40-50": 0,
+    "50-60": 0,
+    "60-70": 0,
+    "70-80": 0,
+    "80-90": 3,
+    "90-100": 7,
+    "100": 2
+  },
+  "investigations": [
+    {
+      "timestamp": "00:00:02",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 1,
+      "rounds": 1,
+      "reason": "Normal social interaction, no aggression or violence indicators, casual atmosphere with people standing and waiting at a bar counter."
+    },
+    {
+      "timestamp": "00:00:06",
+      "status": "CLEAR",
+      "confidence": 90,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "The man appears to be standing alone, reaching for an item, with no clear indication of aggression, distress, or weapons in the scene."
+    },
+    {
+      "timestamp": "00:00:10",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Normal social interaction, no aggression or violence indicators, and a relaxed atmosphere in the bar scene."
+    },
+    {
+      "timestamp": "00:00:15",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Normal social interaction, no aggression or violence indicators observed in the bar scene at 00:00:15."
+    },
+    {
+      "timestamp": "00:00:19",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 1,
+      "reason": "Normal social interaction, no aggression or violence indicators observed in the bar scene at 00:00:19."
+    },
+    {
+      "timestamp": "00:00:23",
+      "status": "ALERT",
+      "confidence": 85,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 2,
+      "rounds": 2,
+      "reason": "Aggressive interaction observed among people in the scene, with scattered objects suggesting a potential fight or disturbance ([00:00:23] - [00:00:26])."
+    },
+    {
+      "timestamp": "00:00:39",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 4,
+      "rounds": 2,
+      "reason": "Active violence: individuals displaying aggressive behavior and physical altercation in the scene ([00:00:41])"
+    },
+    {
+      "timestamp": "00:00:46",
+      "status": "ALERT",
+      "confidence": 85,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 6,
+      "rounds": 2,
+      "reason": "Scattered objects and chaotic atmosphere suggest a recent altercation, and the presence of broken items and debris indicates a potentially urgent situation ([00:00:46] - [00:00:49])."
+    },
+    {
+      "timestamp": "00:00:56",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 7,
+      "rounds": 2,
+      "reason": "Normal food preparation activity observed, no threatening behavior with the knife or utensil."
+    },
+    {
+      "timestamp": "00:01:14",
+      "status": "CLEAR",
+      "confidence": 95,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 8,
+      "rounds": 1,
+      "reason": "Normal social interaction and activity in a kitchen or food service area, no aggression or violence indicators observed."
+    },
+    {
+      "timestamp": "00:01:19",
+      "status": "ALERT",
+      "confidence": 100,
+      "ground_truth": "VIOLENCE",
+      "annotation_id": 8,
+      "rounds": 2,
+      "reason": "Aggressive behavior or physical altercations observed at 00:01:21 in the crowded store aisle."
+    },
+    {
+      "timestamp": "00:01:25",
+      "status": "ALERT",
+      "confidence": 85,
+      "ground_truth": "NO_VIOLENCE",
+      "annotation_id": 9,
+      "rounds": 1,
+      "reason": "Scattered objects and overturned chair suggest a potential fight occurred [00:01:25], indicating possible violence or aggression."
+    }
+  ]
+}

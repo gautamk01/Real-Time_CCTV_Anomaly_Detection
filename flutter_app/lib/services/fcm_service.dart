@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/violence_alert.dart';
 import '../providers/alert_provider.dart';
 import 'alert_notification_service.dart';
@@ -7,8 +8,9 @@ import 'alert_notification_service.dart';
 class FCMService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final AlertProvider alertProvider;
+  final GlobalKey<NavigatorState> navigatorKey;
 
-  FCMService(this.alertProvider);
+  FCMService(this.alertProvider, this.navigatorKey);
 
   Future<void> initialize() async {
     // Request permission for notifications
@@ -46,6 +48,14 @@ class FCMService {
 
     // Handle background/terminated messages
     FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
+
+    // Check if app was opened from a terminated state via notification
+    RemoteMessage? initialMessage = await _firebaseMessaging
+        .getInitialMessage();
+    if (initialMessage != null) {
+      debugPrint('🚨 App opened from terminated state via notification');
+      _handleBackgroundMessage(initialMessage);
+    }
   }
 
   void _handleForegroundMessage(RemoteMessage message) async {
@@ -60,8 +70,13 @@ class FCMService {
 
       // Trigger vibration and sound
       await AlertNotificationService.triggerAlert(confidence: alert.confidence);
+
+      // Show in-app alert dialog - REMOVED as per user request
+      // _showAlertDialog(alert);
     }
   }
+
+  // _showAlertDialog removed
 
   void _handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('🚨 Background message opened!');

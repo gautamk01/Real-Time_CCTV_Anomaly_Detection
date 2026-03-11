@@ -1,0 +1,26 @@
+{
+  "video_file": "videos/test_video.mp4",
+  "annotations": [
+    {
+      "id": 1,
+      "start_time": "00:00:00",
+      "end_time": "00:01:11",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "start_time": "00:01:11",
+      "end_time": "00:01:50",
+      "label": "VIOLENCE",
+      "description": ""
+    },
+    {
+      "id": 3,
+      "start_time": "00:01:50",
+      "end_time": "00:02:08",
+      "label": "NO_VIOLENCE",
+      "description": ""
+    }
+  ]
+}

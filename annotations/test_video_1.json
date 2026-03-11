@@ -1,0 +1,12 @@
+{
+  "video_file": "videos/test_video_1.avi",
+  "annotations": [
+    {
+      "id": 1,
+      "start_time": "00:00:00",
+      "end_time": "00:00:10",
+      "label": "NO_VIOLENCE",
+      "description": "TODO: Watch video and annotate this segment"
+    }
+  ]
+}

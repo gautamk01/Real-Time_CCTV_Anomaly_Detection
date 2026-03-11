@@ -1,213 +1,221 @@
-"""Cloud AI Model - Gemini Wrapper with Enhanced Prompting."""
+"""Cloud AI Model - Groq (Llama) Wrapper with Enhanced Prompting."""
 
 import json
-import google.generativeai as genai
-from typing import List, Dict
+import re
+import concurrent.futures
+from openai import OpenAI
+from typing import List, Dict, Optional
 from .examples_database import get_diverse_examples, format_example_for_prompt
+
+# Timeout for Groq API calls (seconds)
+_CLOUD_TIMEOUT = 5
+
+# Keywords for edge-only fallback when cloud times out
+_ALERT_KEYWORDS = re.compile(
+    r"\b(fight|fighting|punch|punching|kick|kicking|struggle|struggling|"
+    r"attack|attacking|aggression|aggressive|hit|hitting|slap|slapping|"
+    r"choke|choking|wrestle|wrestling|shove|shoving|drag|dragging|"
+    r"weapon|knife|gun|blood|unconscious|injured|fallen|down)\b",
+    re.IGNORECASE,
+)
+_CLEAR_KEYWORDS = re.compile(
+    r"\b(standing|walking|talking|sitting|normal|calm|casual|friendly|"
+    r"relaxed|peaceful|quiet|strolling|chatting)\b",
+    re.IGNORECASE,
+)
 
 
 class CloudAI:
     """
     Cloud AI for threat assessment and investigation orchestration.
-    Uses Google Gemini with enhanced prompting and few-shot learning.
+    Uses Groq (Llama 3.3 70B) via OpenAI-compatible API for sub-second inference.
+
+    Performance: Static prompt (decision framework + few-shot examples) is passed
+    as system message. Only the dynamic observation log is sent per call.
     """
-    
-    def __init__(self, api_key: str, model_id: str = "gemini-flash-latest"):
+
+    def __init__(self, api_key: str, model_id: str = "llama-3.3-70b-versatile"):
         """
         Initialize the cloud AI model.
-        
+
         Args:
-            api_key: Google Gemini API key
-            model_id: Gemini model identifier
+            api_key: Groq API key
+            model_id: Model identifier (default: llama-3.3-70b-versatile)
         """
         self.model_id = model_id
-        
-        print(f"🔧 [CLOUD] Configuring {model_id}...")
-        
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_id)
-        
+
+        print(f"🔧 [CLOUD] Configuring {model_id} via Groq...")
+
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+
+        # Pre-build static system instruction
+        self.system_prompt = self._build_system_instruction()
+
         print(f"✅ [CLOUD] Model configured successfully")
-        print(f"✨ [CLOUD] Using enhanced prompting + few-shot learning")
-    
-    def assess_threat(self, history: List[str]) -> Dict:
+        print(f"✨ [CLOUD] Using Groq LPU for sub-second inference")
+
+    def _build_system_instruction(self) -> str:
+        """Build the static system instruction once at init time.
+
+        This contains the decision framework, few-shot examples, rules,
+        and output format — everything that doesn't change between calls.
         """
-        Analyze the situation and decide next action using enhanced prompt.
-        
-        Args:
-            history: List of observation strings with timestamps
-            
-        Returns:
-            Dict with keys: status, confidence, question (optional), reason
-            - status: "CLEAR", "INVESTIGATE", or "ALERT"
-            - confidence: 0-100
-            - question: Next question for edge vision (if INVESTIGATE)
-            - reason: Brief explanation
-        """
-        history_text = "\n".join([f"- {h}" for h in history])
-        
-        # Get few-shot examples
-        examples = get_diverse_examples(limit=6)
+        examples = get_diverse_examples(limit=3)
         examples_text = "\n".join([
             format_example_for_prompt(ex, i) for i, ex in enumerate(examples)
         ])
-        
-        prompt = f"""
-You are an AI Violence Detection Sentinel analyzing REAL-TIME CCTV footage.
-Your PRIMARY MISSION: Detect violence quickly and accurately while minimizing false positives.
 
-═══════════════════════════════════════════════════════════════
-📚 REAL-WORLD EXAMPLES FROM THIS CCTV SYSTEM:
-═══════════════════════════════════════════════════════════════
+        return f"""You are a Violence Detection AI analyzing REAL-TIME CCTV footage.
 
+CRITICAL RULE: When in doubt, ALWAYS choose ALERT. A false alarm is acceptable — a missed attack is not.
+
+EXAMPLES:
 {examples_text}
 
-═══════════════════════════════════════════════════════════════
-📋 CURRENT OBSERVATION LOG (Chronological Real-Time Updates):
-═══════════════════════════════════════════════════════════════
+ALERT immediately (do NOT investigate first):
+- Any punching, kicking, slapping, choking, wrestling, shoving, dragging
+- Person on ground, unconscious, injured, or fallen
+- Weapons visible (knife, gun, bat, bottle used as weapon)
+- Forceful restraint or aggressive physical control
+- Person in distress, agitation, or fear
+- Scattered/broken objects suggesting a fight occurred
+- Someone approaching a distressed/downed person aggressively
+
+INVESTIGATE (ask ONE short question) — ONLY when ALL of these are true:
+- No physical contact observed
+- No one is on the ground or in distress
+- Scene is ambiguous (e.g. tense argument, unclear gathering)
+- This is round 1 (if round 2+, you MUST decide ALERT or CLEAR)
+
+CLEAR — ONLY when the scene is clearly safe:
+- Casual walking, talking, standing, sitting
+- Friendly social interaction with no tension
+- Sports/exercise in appropriate venue
+- Empty scene or no people
+
+ESCALATION RULE: If this is round 2 or later and you are unsure, choose ALERT. Do not return INVESTIGATE after round 1 unless you are highly confident the scene is merely ambiguous.
+
+NOT violence: sports in gym/field, choreographed performance, playful roughhousing with smiling, yoga.
+
+Confidence: 100=active striking/weapons, 95=person down/injured, 90=restraint/distress, 85=agitation/fear/scattered objects, 75=heated argument, 50=normal.
+
+JSON output: {{"status":"CLEAR|INVESTIGATE|ALERT","confidence":<0-100>,"question":"<if INVESTIGATE>","reason":"<cite timestamps, max 2 sentences>"}}"""
+
+    def _edge_fallback(self, history: List[str]) -> Dict:
+        """Fast keyword-based fallback when the cloud call times out."""
+        text = " ".join(history).lower()
+
+        alert_hits = len(_ALERT_KEYWORDS.findall(text))
+        clear_hits = len(_CLEAR_KEYWORDS.findall(text))
+
+        if alert_hits > 0:
+            return {
+                "status": "ALERT",
+                "confidence": 85,
+                "question": "",
+                "reason": f"Cloud timeout — edge fallback triggered on {alert_hits} alert keyword(s)",
+            }
+        if clear_hits > 0:
+            return {
+                "status": "CLEAR",
+                "confidence": 70,
+                "question": "",
+                "reason": f"Cloud timeout — edge fallback: {clear_hits} benign keyword(s)",
+            }
+        return {
+            "status": "INVESTIGATE",
+            "confidence": 60,
+            "question": "Describe any aggressive actions visible in the scene.",
+            "reason": "Cloud timeout — edge fallback: ambiguous scene, needs follow-up",
+        }
+
+    def _format_rag_cases(self, rag_context: List[dict]) -> str:
+        """Format RAG-retrieved cases as a prompt section.
+
+        Args:
+            rag_context: List of case dicts from RAG retrieval, each with
+                         'history' (str), 'metadata' (dict), 'similarity' (float)
+
+        Returns:
+            Formatted string to append to the system prompt
+        """
+        lines = ["\nSIMILAR PAST CASES (from system memory):"]
+        for i, case in enumerate(rag_context):
+            meta = case.get("metadata", {})
+            similarity = case.get("similarity", 0)
+            history_text = case.get("history", "")
+            # Truncate long histories to keep prompt compact
+            if len(history_text) > 250:
+                history_text = history_text[:247] + "..."
+
+            lines.append(f"Past Case {i + 1} (similarity: {similarity:.0%}):")
+            lines.append(f"  Observations: {history_text}")
+            lines.append(f"  Verdict: {meta.get('status', '?')} ({meta.get('confidence', '?')}%)")
+            lines.append(f"  Reason: {meta.get('reason', 'N/A')}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def assess_threat(self, history: List[str],
+                      rag_context: Optional[List[dict]] = None) -> Dict:
+        """
+        Analyze the situation and decide next action.
+
+        Sends the system prompt + dynamic observation log to Groq.
+        Uses a 5-second timeout with keyword fallback to prevent stalling.
+
+        Args:
+            history: List of observation strings with timestamps
+            rag_context: Optional list of similar past cases from RAG
+
+        Returns:
+            Dict with keys: status, confidence, question (optional), reason
+        """
+        # Build system message: static prompt + optional RAG context
+        system_msg = self.system_prompt
+        if rag_context:
+            system_msg += self._format_rag_cases(rag_context)
+
+        history_text = "\n".join([f"- {h}" for h in history])
+
+        user_prompt = f"""OBSERVATION LOG:
 {history_text}
 
-═══════════════════════════════════════════════════════════════
-⚖️ DECISION FRAMEWORK:
-═══════════════════════════════════════════════════════════════
+Analyze and provide JSON decision."""
 
-**🚨 ALERT** - Trigger IMMEDIATELY when ANY observed:
-
-├─ Active Violence:
-│  • Punching, Kicking, Slapping, Headbutting
-│  • Choking, Wrestling with force
-│  • Hair pulling, Dragging by force
-│  • Shoving causing person to fall or stumble
-│  • Person on ground being struck or kicked
-│  • Multiple people attacking one person
-│  • Throwing objects at people with force
-│
-├─ Weapons:
-│  • Any weapon visible (knife, bat, gun, improvised tool)
-│  • Threatening gestures with objects
-│  • Brandishing or pointing weapons
-│
-└─ High-Risk Indicators:
-   • Person unconscious/injured on ground with others nearby
-   • Aggressive restraint without clear justification (forceful holding, struggling)
-   • Rapid aggressive movements toward person (charging, lunging)
-   • Defensive postures indicating active attack (cowering, protecting head)
-   • Blood or visible injuries during confrontation
-
-**🔍 INVESTIGATE** - Ask ONE specific question when:
-
-├─ Ambiguous Situations:
-│  • Physical contact visible but unclear if violent or friendly
-│  • Tense body language but no clear violence yet
-│  • Person down but unclear cause (medical vs assault)
-│  • Suspicious gathering or heated confrontation
-│  • Raised hands unclear (surrender vs attack)
-│
-└─ RULE: Maximum 2-3 questions total. Be decisive.
-
-**✅ CLEAR** - Only when CERTAIN it's safe:
-
-├─ Normal Activities:
-│  • Casual walking, talking, standing
-│  • Friendly physical contact (handshakes, pats, hugs with smiles)
-│  • Non-contact social games or activities
-│  • Controlled sports/exercise in appropriate context
-│  • Performance art or choreographed movements
-│
-└─ No suspicious behavior whatsoever
-
-═══════════════════════════════════════════════════════════════
-🚫 NEGATIVE TRIGGERS (DO NOT flag as violence unless confirmed):
-═══════════════════════════════════════════════════════════════
-
-❌ Sports/Exercise in appropriate venue (gym, field, ring, court)
-❌ Choreographed fighting (rehearsed, film/stage context visible)
-❌ Playful roughhousing (smiling, laughing, no distress signals)
-❌ Assistance to injured/fallen person (helping up, first aid, support)
-❌ Dance or performance art (synchronized, rhythmic movements)
-❌ Martial arts practice (controlled movements, protective gear, training environment)
-
-═══════════════════════════════════════════════════════════════
-📊 CONFIDENCE SCORING GUIDE:
-═══════════════════════════════════════════════════════════════
-
-├─ 100%: Active striking/kicking/weapon use observed directly
-├─ 95%:  Clear violence OR person down + confirmed aggression
-├─ 90%:  Multiple high-risk indicators present simultaneously
-├─ 85%:  Single strong indicator (unconscious person + others nearby)
-├─ 75%:  Ambiguous contact + defensive postures/distress visible
-├─ 70%:  Suspicious gathering + tense atmosphere
-├─ 65%:  Low visibility/unclear but concerning elements
-├─ 50%:  Insufficient evidence or normal activity
-
-═══════════════════════════════════════════════════════════════
-⏱️ TEMPORAL ANALYSIS:
-═══════════════════════════════════════════════════════════════
-
-• Escalating: Situation worsening across observations → Higher confidence for ALERT
-• De-escalating: Tension reducing, dispersing → Lower confidence, lean CLEAR
-• Static: Person still down/unchanged dangerous state → Maintain ALERT
-• Resolved: Initial concern explained away → CLEAR with reasoning
-
-═══════════════════════════════════════════════════════════════
-🎯 CRITICAL RULES:
-═══════════════════════════════════════════════════════════════
-
-1. 🚨 If initial frame mentions "attack", "striking", "aggressive contact",
-   "person down", or "fighting" → Lean heavily toward ALERT unless clearly disproven
-
-2. ⚠️  Trust the edge vision's initial assessment - don't over-analyze or second-guess
-
-3. 🎯 Person on ground + others nearby = INVESTIGATE minimum, likely ALERT
-   (Rule 3 is MANDATORY - never skip investigation for downed persons)
-
-4. ⏱️  Be decisive within 1-3 rounds. Don't endlessly investigate obvious situations
-
-5. 🔴 When in doubt about safety → ALERT
-   (False positive is better than missed violence)
-
-6. 📈 Use examples above as calibration - mirror similar confidence levels
-
-7. 🎭 Context matters: Same action in different settings means different things
-   (Punch in ring = CLEAR, Punch in parking lot = ALERT)
-
-═══════════════════════════════════════════════════════════════
-📤 JSON OUTPUT FORMAT:
-═══════════════════════════════════════════════════════════════
-
-{{
-  "status": "CLEAR" or "INVESTIGATE" or "ALERT",
-  "confidence": <0-100>,
-  "question": "<if INVESTIGATE: ONE specific, actionable question>",
-  "reason": "<concise explanation citing specific observations with timestamps>"
-}}
-
-**IMPORTANT NOTES:**
-- Your question (if INVESTIGATE) will analyze the CURRENT live frame, not past frames
-- Always cite timestamp [HH:MM:SS] when referencing observations
-- Keep reason under 2 sentences for clarity
-
-═══════════════════════════════════════════════════════════════
-
-Now analyze the CURRENT OBSERVATION LOG above and provide your JSON decision.
-"""
-        
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
-            )
-            
-            decision = json.loads(response.text)
-            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    self.client.chat.completions.create,
+                    model=self.model_id,
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    max_tokens=200,
+                    temperature=0,
+                )
+                response = future.result(timeout=_CLOUD_TIMEOUT)
+
+            decision = json.loads(response.choices[0].message.content)
+
             # Ensure all required fields exist
             decision.setdefault("status", "CLEAR")
             decision.setdefault("confidence", 0)
             decision.setdefault("question", "Describe any aggressive actions.")
             decision.setdefault("reason", "No reason provided")
-            
+
             return decision
-        
+
+        except concurrent.futures.TimeoutError:
+            print(
+                f"   ⏱️ [CLOUD] Timeout ({_CLOUD_TIMEOUT}s) — using edge fallback")
+            return self._edge_fallback(history)
+
         except Exception as e:
             print(f"   ❌ [CLOUD ERROR] {e}")
             return {
