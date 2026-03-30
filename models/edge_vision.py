@@ -68,6 +68,7 @@ class EdgeVision:
             model_id,
             trust_remote_code=True,
             dtype=torch.bfloat16,
+            load_in_8bit=True,
             local_files_only=True
         ).to(self.device)
 

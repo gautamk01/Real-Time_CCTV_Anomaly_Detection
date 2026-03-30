@@ -1,0 +1,57 @@
+source /home/gautam/Desktop/Patent/surveillance_system/venv/bin/activate
+
+● The tool is ready. Here's a quick summary:
+
+  How to use it                                                                                                                                                                               
+   
+  # Normal video (starts as NO_VIOLENCE)                                                                                                                                                      
+  python annotate.py path/to/video.mp4                      
+
+  # Video that starts with fighting
+  python annotate.py path/to/video.mp4 --start-label VIOLENCE
+
+  Controls while watching
+
+  ┌───────┬────────────────────────────────────┐
+  │  Key  │               Action               │
+  ├───────┼────────────────────────────────────┤
+  │ v     │ Mark VIOLENCE starts here          │
+  ├───────┼────────────────────────────────────┤
+  │ n     │ Mark NO_VIOLENCE starts here       │
+  ├───────┼────────────────────────────────────┤
+  │ Space │ Pause / Resume                     │
+  ├───────┼────────────────────────────────────┤
+  │ → / ← │ Seek +/- 5 seconds                 │
+  ├───────┼────────────────────────────────────┤
+  │ . / , │ (Paused) Step 1 frame forward/back │
+  ├───────┼────────────────────────────────────┤
+  │ + / - │ Speed up / slow down (0.25x to 4x) │
+  ├───────┼────────────────────────────────────┤
+  │ u     │ Undo last mark                     │
+  ├───────┼────────────────────────────────────┤
+  │ q     │ Save and quit                      │
+  ├───────┼────────────────────────────────────┤
+  │ Esc   │ Quit without saving                │
+  └───────┴────────────────────────────────────┘
+
+  What you see on screen
+
+  - Top bar — timestamp, frame number, speed, pause indicator
+  - Timeline bar — red (violence) / green (normal) colored segments with a white playback cursor
+  - Bottom bar — current label in color, plus controls hint
+
+  Output
+
+  Saves to annotations/<video_name>.json in the exact format your benchmark.py expects. You can immediately run:
+
+  python benchmark.py --annotations annotations/<video_name>.json
+
+✻ Cogitated for 4m 7s                                                    
+Resume this session with:                                                                                                                                                                     
+claude --resume 454a3be2-da5a-4049-9bb5-f3f6fbf95983   
+
+new udpate 2-march-2026 
+claude --resume de27b763-10e7-470d-b1fa-4613d370cef2 
+
+
+To continue this session, run codex resume 019cf2d2-cafa-7c11-ad74-92d84dae9c92
