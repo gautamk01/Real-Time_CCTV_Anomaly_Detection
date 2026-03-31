@@ -77,11 +77,19 @@ def _encode_image(image: Image.Image) -> str:
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
-def init_edge_vision(model_id: str = "vikhyatk/moondream2", device: str = "auto"):
+def init_edge_vision(
+    model_id: str = "vikhyatk/moondream2",
+    device: str = "auto",
+    quant_mode: str = "auto",
+):
     """Initialize the EdgeVision model. Called before starting the server."""
     global _edge_vision
     from models.edge_vision import EdgeVision
-    _edge_vision = EdgeVision(model_id=model_id, device=device)
+    _edge_vision = EdgeVision(
+        model_id=model_id,
+        device=device,
+        quant_mode=quant_mode,
+    )
     return _edge_vision
 
 
@@ -128,8 +136,9 @@ def observe(message: AgentMessage) -> AgentResponse:
     try:
         image = _decode_image(message.payload["image_b64"])
         question = message.payload["question"]
+        max_tokens = message.payload.get("max_tokens")
 
-        description = _edge_vision.analyze(image, question)
+        description = _edge_vision.analyze(image, question, max_tokens=max_tokens)
 
         # Proactive cleanup: clear encoding cache and free CUDA blocks
         _edge_vision.clear_cache()
@@ -208,6 +217,7 @@ def answer(message: AgentMessage) -> AgentResponse:
     try:
         encode_id = message.payload["encode_id"]
         question = message.payload["question"]
+        max_tokens = message.payload.get("max_tokens")
 
         with _cache_lock:
             entry = _encoded_cache.get(encode_id)
@@ -222,7 +232,11 @@ def answer(message: AgentMessage) -> AgentResponse:
             )
 
         encoded_image, _ = entry
-        description = _edge_vision.answer(encoded_image, question)
+        description = _edge_vision.answer(
+            encoded_image,
+            question,
+            max_tokens=max_tokens,
+        )
 
         # Delete used entry immediately — encode/answer is one-shot
         with _cache_lock:

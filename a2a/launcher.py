@@ -20,13 +20,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def start_edge(port: int, model_id: str, device: str):
+def start_edge(port: int, model_id: str, device: str, quant_mode: str):
     """Start the Edge Vision agent service."""
     import uvicorn
     from a2a.edge_agent import app, init_edge_vision
 
     print(f"\n🔧 [LAUNCHER] Starting Edge Agent on port {port}...")
-    init_edge_vision(model_id=model_id, device=device)
+    init_edge_vision(model_id=model_id, device=device, quant_mode=quant_mode)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")
 
 
@@ -84,7 +84,12 @@ def main():
         # Edge agent
         p_edge = multiprocessing.Process(
             target=start_edge,
-            args=(args.edge_port, Config.EDGE_MODEL_ID, Config.DEVICE),
+            args=(
+                args.edge_port,
+                Config.EDGE_MODEL_ID,
+                Config.DEVICE,
+                Config.EDGE_QUANT_MODE,
+            ),
             daemon=True,
         )
         processes.append(("Edge", p_edge, args.edge_port))
@@ -132,7 +137,7 @@ def main():
 
     elif args.edge:
         port = args.port or args.edge_port
-        start_edge(port, Config.EDGE_MODEL_ID, Config.DEVICE)
+        start_edge(port, Config.EDGE_MODEL_ID, Config.DEVICE, Config.EDGE_QUANT_MODE)
 
     elif args.cloud:
         port = args.port or args.cloud_port

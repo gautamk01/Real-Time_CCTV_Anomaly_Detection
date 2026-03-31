@@ -1,4 +1,4 @@
-"""Alert Frame Saving - Thread-based I/O for Zero Latency."""
+"""Incident frame saving - thread-based I/O for zero latency."""
 
 import json
 import threading
@@ -8,7 +8,7 @@ from typing import List, Dict
 from PIL import Image
 
 
-def save_alert_sync(frames_data: List[Dict], incident_dir: Path, 
+def save_alert_sync(frames_data: List[Dict], incident_dir: Path,
                     verdict: Dict, history: List[str]):
     """
     Save alert incident to disk (runs in background thread).
@@ -48,7 +48,8 @@ def save_alert_sync(frames_data: List[Dict], incident_dir: Path,
 
 
 def save_alert_incident(frames_data: List[Dict], alerts_dir: Path,
-                        verdict: Dict, history: List[str]):
+                        verdict: Dict, history: List[str],
+                        prefix: str = "alert") -> str:
     """
     Trigger background save without blocking (fire-and-forget).
     
@@ -57,11 +58,15 @@ def save_alert_incident(frames_data: List[Dict], alerts_dir: Path,
         alerts_dir: Base alerts directory
         verdict: Investigation verdict  
         history: Investigation history
+        prefix: Directory prefix, e.g. "alert" or "review"
+
+    Returns:
+        The created incident directory name
     """
     # Create unique incident directory name
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     confidence = verdict.get('confidence', 0)
-    incident_name = f"alert_{timestamp}_conf{confidence}"
+    incident_name = f"{prefix}_{timestamp}_conf{confidence}"
     incident_dir = alerts_dir / incident_name
     
     # Run save in background thread (non-blocking, no event loop needed)
@@ -71,4 +76,4 @@ def save_alert_incident(frames_data: List[Dict], alerts_dir: Path,
         daemon=True  # Thread will auto-terminate when main program exits
     )
     save_thread.start()
-
+    return incident_name

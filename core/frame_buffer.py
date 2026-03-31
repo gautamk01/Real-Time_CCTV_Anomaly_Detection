@@ -77,6 +77,16 @@ class FrameBuffer:
             self._rgb_dirty = False
         return self._rgb_cache
 
+    def get_latest_bgr(self) -> Optional[np.ndarray]:
+        """Get raw BGR frame for display (thread-safe copy)."""
+        with self.lock:
+            return self._latest_bgr.copy() if self._latest_bgr is not None else None
+
+    def get_status(self) -> Tuple[Optional[str], bool]:
+        """Return (latest_timestamp, motion_detected) atomically."""
+        with self.lock:
+            return self.latest_timestamp, self.motion_detected
+
     def clear_motion_flag(self):
         """Called by AI thread after handling motion event."""
         with self.lock:

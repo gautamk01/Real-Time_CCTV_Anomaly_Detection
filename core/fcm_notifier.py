@@ -13,7 +13,8 @@ class FCMNotifier:
     Firebase Cloud Messaging notification service for violence detection alerts.
     """
     
-    def __init__(self, credentials_path: Path, topic: str = "violence_alerts"):
+    def __init__(self, credentials_path: Path, topic: str = "violence_alerts",
+                 enable_review_notifications: bool = False):
         """
         Initialize FCM service with Firebase credentials.
         
@@ -23,6 +24,7 @@ class FCMNotifier:
         """
         self.topic = topic
         self.initialized = False
+        self.enable_review_notifications = enable_review_notifications
         
         try:
             # Initialize Firebase app if not already initialized
@@ -38,10 +40,81 @@ class FCMNotifier:
             print(f"   Credentials path: {credentials_path}")
             self.initialized = False
     
-    def send_alert(self, verdict: Dict, history: List[str], 
+    def _build_message(self, verdict: Dict, history: List[str],
+                       timestamp: str, alert_dir: str = None,
+                       high_priority: bool = True) -> messaging.Message:
+        """Build an FCM message for ALERT or REVIEW incidents."""
+        status = verdict.get('status', 'ALERT')
+        confidence = verdict.get('confidence', 0)
+        reason = verdict.get('reason', 'Unknown')
+
+        if len(reason) > 200:
+            reason = reason[:197] + "..."
+
+        if status == "REVIEW":
+            title = "Review Needed"
+            body = f"Ambiguous incident at {timestamp}"
+            android_priority = 'normal'
+            apns_priority = '5'
+            notification_priority = 'default'
+            vibrate = None
+            sound = None
+            channel_id = 'review_incidents'
+            badge = 0
+        else:
+            title = "🚨 VIOLENCE DETECTED!"
+            body = f"Confidence: {confidence}% at {timestamp}"
+            android_priority = 'high' if high_priority else 'normal'
+            apns_priority = '10' if high_priority else '5'
+            notification_priority = 'high' if high_priority else 'default'
+            vibrate = [0, 500, 200, 500, 200, 500] if high_priority else None
+            sound = 'default' if high_priority else None
+            channel_id = 'violence_alerts'
+            badge = 1 if high_priority else 0
+
+        android_notification_kwargs = {
+            'channel_id': channel_id,
+            'priority': notification_priority,
+            'default_vibrate_timings': False,
+            'default_sound': bool(sound),
+        }
+        if vibrate is not None:
+            android_notification_kwargs['vibrate_timings_millis'] = vibrate
+
+        return messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            data={
+                'status': status,
+                'timestamp': timestamp,
+                'confidence': str(confidence),
+                'reason': reason,
+                'alert_dir': alert_dir or '',
+                'rounds': str(len([h for h in history if h.startswith('[')])),
+                'sent_at': datetime.now().isoformat()
+            },
+            topic=self.topic,
+            android=messaging.AndroidConfig(
+                priority=android_priority,
+                notification=messaging.AndroidNotification(
+                    **android_notification_kwargs
+                )
+            ),
+            apns=messaging.APNSConfig(
+                headers={'apns-priority': apns_priority},
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title=title, body=body),
+                        sound=sound,
+                        badge=badge
+                    )
+                )
+            )
+        )
+
+    def send_alert(self, verdict: Dict, history: List[str],
                    timestamp: str, alert_dir: str = None) -> bool:
         """
-        Send violence alert notification via FCM.
+        Send an urgent violence alert notification via FCM.
         
         Args:
             verdict: Investigation verdict dict with status, confidence, reason
@@ -57,54 +130,15 @@ class FCMNotifier:
             return False
         
         try:
-            # Prepare notification payload
             confidence = verdict.get('confidence', 0)
-            reason = verdict.get('reason', 'Unknown')
-            
-            # Truncate reason if too long (FCM has 4KB limit)
-            if len(reason) > 200:
-                reason = reason[:197] + "..."
-            
-            # Create notification message
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title="🚨 VIOLENCE DETECTED!",
-                    body=f"Confidence: {confidence}% at {timestamp}"
-                ),
-                data={
-                    'timestamp': timestamp,
-                    'confidence': str(confidence),
-                    'reason': reason,
-                    'alert_dir': alert_dir or '',
-                    'rounds': str(len([h for h in history if h.startswith('[')])),
-                    'sent_at': datetime.now().isoformat()
-                },
-                topic=self.topic,
-                android=messaging.AndroidConfig(
-                    priority='high',
-                    notification=messaging.AndroidNotification(
-                        channel_id='violence_alerts',
-                        priority='high',
-                        default_vibrate_timings=False,
-                        vibrate_timings_millis=[0, 500, 200, 500, 200, 500],  # 3 bursts
-                        default_sound=True
-                    )
-                ),
-                apns=messaging.APNSConfig(
-                    headers={'apns-priority': '10'},
-                    payload=messaging.APNSPayload(
-                        aps=messaging.Aps(
-                            alert=messaging.ApsAlert(
-                                title="🚨 VIOLENCE DETECTED!",
-                                body=f"Confidence: {confidence}% at {timestamp}"
-                            ),
-                            sound='default',
-                            badge=1
-                        )
-                    )
-                )
+            message = self._build_message(
+                verdict,
+                history,
+                timestamp,
+                alert_dir=alert_dir,
+                high_priority=True,
             )
-            
+
             # Send message
             response = messaging.send(message)
             print(f"📱 [FCM] Alert notification sent successfully")
@@ -116,6 +150,31 @@ class FCMNotifier:
             
         except Exception as e:
             print(f"❌ [FCM] Failed to send notification: {e}")
+            return False
+
+    def send_review(self, verdict: Dict, history: List[str],
+                    timestamp: str, alert_dir: str = None) -> bool:
+        """Send a lower-priority manual-review notification via FCM."""
+        if not self.enable_review_notifications:
+            return False
+        if not self.initialized:
+            print("⚠️  [FCM] Skipping review notification - service not initialized")
+            return False
+
+        try:
+            message = self._build_message(
+                verdict,
+                history,
+                timestamp,
+                alert_dir=alert_dir,
+                high_priority=False,
+            )
+            response = messaging.send(message)
+            print(f"📱 [FCM] Review notification sent successfully")
+            print(f"   Message ID: {response}")
+            return True
+        except Exception as e:
+            print(f"❌ [FCM] Failed to send review notification: {e}")
             return False
     
     def send_test_notification(self) -> bool:

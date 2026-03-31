@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument(
         "--annotations",
         type=str,
-        required=True,
+        default=None,
         help="Path to ground truth annotations JSON",
     )
     parser.add_argument(
@@ -65,6 +65,43 @@ def parse_args():
         choices=["VIOLENCE", "NO_VIOLENCE", "EXCLUDE"],
         default="VIOLENCE",
         help="How to map INVESTIGATE (timeout) status (default: VIOLENCE)",
+    )
+    parser.add_argument(
+        "--review-as",
+        type=str,
+        choices=["VIOLENCE", "NO_VIOLENCE", "EXCLUDE"],
+        default="EXCLUDE",
+        help="How to map REVIEW status (default: EXCLUDE)",
+    )
+    parser.add_argument(
+        "--quant-mode",
+        type=str,
+        choices=["auto", "8bit", "4bit", "none"],
+        default=Config.EDGE_QUANT_MODE,
+        help="Quantization mode for the edge model (default: config value)",
+    )
+    parser.add_argument(
+        "--profile-edge-only",
+        action="store_true",
+        help="Skip cloud benchmarking and profile edge latency only",
+    )
+    parser.add_argument(
+        "--profile-quant-modes",
+        type=str,
+        default="8bit,4bit",
+        help="Comma-separated quant modes to profile in edge-only mode",
+    )
+    parser.add_argument(
+        "--profile-runs",
+        type=int,
+        default=3,
+        help="Number of timed runs per quant mode in edge-only mode",
+    )
+    parser.add_argument(
+        "--profile-question",
+        type=str,
+        default=AIInvestigator.INITIAL_EDGE_QUESTION,
+        help="Question used for edge-only profiling",
     )
     return parser.parse_args()
 
@@ -88,7 +125,158 @@ def load_annotations(path: str) -> dict:
     return data
 
 
-def run_benchmark(video_path: str, annotations: list, investigate_as: str):
+def _stats(values: list[float]) -> dict:
+    if not values:
+        return {"mean": 0, "min": 0, "max": 0}
+    return {
+        "mean": round(sum(values) / len(values), 2),
+        "min": round(min(values), 2),
+        "max": round(max(values), 2),
+        "runs": [round(v, 2) for v in values],
+    }
+
+
+def _load_profile_frame(video_path: str) -> Image.Image:
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"cannot open video {video_path}")
+
+    try:
+        ret, frame_bgr = cap.read()
+        if not ret:
+            raise RuntimeError(f"cannot read frame from {video_path}")
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(frame_rgb)
+    finally:
+        cap.release()
+
+
+def _time_edge_call(fn):
+    import torch
+
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    start = time.perf_counter()
+    result = fn()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    return (time.perf_counter() - start) * 1000, result
+
+
+def profile_edge_modes(
+    video_path: str,
+    quant_modes: list[str],
+    runs: int,
+    question: str,
+):
+    import torch
+
+    image = _load_profile_frame(video_path)
+    profiles = []
+
+    for requested_mode in quant_modes:
+        mode = requested_mode.strip()
+        if not mode:
+            continue
+
+        print(f"\n[EDGE PROFILE] Loading quant mode: {mode}")
+        edge = EdgeVision(
+            model_id=Config.EDGE_MODEL_ID,
+            device=Config.DEVICE,
+            quant_mode=mode,
+        )
+
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+
+        edge.analyze(
+            image,
+            question,
+            max_tokens=Config.EDGE_INITIAL_MAX_TOKENS,
+        )
+        edge.clear_cache()
+
+        encode_runs = []
+        answer_initial_runs = []
+        answer_followup_runs = []
+        analyze_runs = []
+        answer_preview = ""
+
+        for run_idx in range(runs):
+            edge.clear_cache()
+            encode_ms, encoded = _time_edge_call(lambda: edge.encode(image))
+            encode_runs.append(encode_ms)
+
+            answer_initial_ms, initial_answer = _time_edge_call(
+                lambda: edge.answer(
+                    encoded,
+                    question,
+                    max_tokens=Config.EDGE_INITIAL_MAX_TOKENS,
+                )
+            )
+            answer_initial_runs.append(answer_initial_ms)
+
+            answer_followup_ms, _ = _time_edge_call(
+                lambda: edge.answer(
+                    encoded,
+                    question,
+                    max_tokens=Config.EDGE_FOLLOWUP_MAX_TOKENS,
+                )
+            )
+            answer_followup_runs.append(answer_followup_ms)
+
+            edge.clear_cache()
+            analyze_ms, analyze_answer = _time_edge_call(
+                lambda: edge.analyze(
+                    image,
+                    question,
+                    max_tokens=Config.EDGE_INITIAL_MAX_TOKENS,
+                )
+            )
+            analyze_runs.append(analyze_ms)
+
+            if run_idx == 0:
+                answer_preview = analyze_answer[:160]
+
+        peak_gpu_mb = 0.0
+        if torch.cuda.is_available():
+            peak_gpu_mb = torch.cuda.max_memory_allocated() / (1024 * 1024)
+
+        profiles.append(
+            {
+                "quant_mode_requested": mode,
+                "quant_mode_loaded": edge.loaded_quant_mode,
+                "device_info": edge.get_device_info(),
+                "encode_ms": _stats(encode_runs),
+                "answer_initial_ms": _stats(answer_initial_runs),
+                "answer_followup_ms": _stats(answer_followup_runs),
+                "analyze_ms": _stats(analyze_runs),
+                "peak_gpu_mb": round(peak_gpu_mb, 2),
+                "answer_preview": answer_preview,
+            }
+        )
+
+        edge.clear_cache()
+
+    return {
+        "profile_info": {
+            "timestamp": datetime.now().isoformat(),
+            "video_file": video_path,
+            "device": Config.DEVICE,
+            "profile_question": question,
+            "runs": runs,
+        },
+        "edge_profiles": profiles,
+    }
+
+
+def run_benchmark(
+    video_path: str,
+    annotations: list,
+    investigate_as: str,
+    review_as: str,
+    quant_mode: str,
+):
     """Run the full benchmark pipeline simulating real-world timing.
 
     Real-world behaviour:
@@ -104,6 +292,7 @@ def run_benchmark(video_path: str, annotations: list, investigate_as: str):
         video_path: Path to video file
         annotations: List of ground truth annotation dicts
         investigate_as: How to map INVESTIGATE status
+        review_as: How to map REVIEW status
 
     Returns:
         Tuple of (ConfusionMatrix, MetricsLogger, list of investigation results)
@@ -125,7 +314,11 @@ def run_benchmark(video_path: str, annotations: list, investigate_as: str):
 
     # Initialize pipeline components
     print("\nInitializing AI models...")
-    edge_vision = EdgeVision(model_id=Config.EDGE_MODEL_ID, device=Config.DEVICE)
+    edge_vision = EdgeVision(
+        model_id=Config.EDGE_MODEL_ID,
+        device=Config.DEVICE,
+        quant_mode=quant_mode,
+    )
     cloud_ai = CloudAI(api_key=Config.GROQ_API_KEY, model_id=Config.CLOUD_MODEL_ID)
 
     metrics_logger = MetricsLogger()
@@ -165,6 +358,8 @@ def run_benchmark(video_path: str, annotations: list, investigate_as: str):
         frame_provider=frame_provider,
         max_rounds=Config.MAX_INVESTIGATION_ROUNDS,
         fps=fps,
+        initial_edge_max_tokens=Config.EDGE_INITIAL_MAX_TOKENS,
+        followup_edge_max_tokens=Config.EDGE_FOLLOWUP_MAX_TOKENS,
         save_alerts=False,  # Don't save alert frames during benchmarks
         fcm_notifier=None,  # No notifications during benchmarks
         metrics_logger=metrics_logger,
@@ -179,7 +374,10 @@ def run_benchmark(video_path: str, annotations: list, investigate_as: str):
     )
 
     # Process video frame-by-frame
-    confusion = ConfusionMatrix(investigate_as=investigate_as)
+    confusion = ConfusionMatrix(
+        investigate_as=investigate_as,
+        review_as=review_as,
+    )
     investigation_results = []
     frame_count = 0
 
@@ -320,6 +518,8 @@ def build_report(
     video_path: str,
     annotations_path: str,
     investigate_as: str,
+    review_as: str,
+    quant_mode: str,
 ) -> dict:
     """Build the full benchmark report dict."""
     # ROC data
@@ -343,6 +543,8 @@ def build_report(
             "video_file": video_path,
             "annotations_file": annotations_path,
             "investigate_as": investigate_as,
+            "review_as": review_as,
+            "quant_mode": quant_mode,
         },
         "confusion_matrix": confusion.summary(),
         "roc_curve_data": [{"fpr": p[0], "tpr": p[1]} for p in roc_data],
@@ -374,6 +576,37 @@ def main():
     if not Path(args.video).exists():
         print(f"Error: video not found: {args.video}")
         sys.exit(1)
+
+    if args.profile_edge_only:
+        quant_modes = [
+            mode.strip()
+            for mode in args.profile_quant_modes.split(",")
+            if mode.strip()
+        ]
+        report = profile_edge_modes(
+            args.video,
+            quant_modes,
+            args.profile_runs,
+            args.profile_question,
+        )
+
+        if args.output:
+            output_path = args.output
+        else:
+            video_stem = Path(args.video).stem
+            output_path = f"results/edge_profile_{video_stem}.json"
+
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(report, f, indent=2, default=str)
+
+        print(json.dumps(report, indent=2, default=str))
+        print(f"\nEdge profile saved to {output_path}")
+        return
+
+    if not args.annotations:
+        print("Error: --annotations is required unless --profile-edge-only is set")
+        sys.exit(1)
     if not Config.GROQ_API_KEY:
         print("Error: GROQ_API_KEY not set in .env file")
         sys.exit(1)
@@ -384,7 +617,11 @@ def main():
 
     # Run benchmark
     confusion, metrics_logger, results = run_benchmark(
-        args.video, annotations, args.investigate_as
+        args.video,
+        annotations,
+        args.investigate_as,
+        args.review_as,
+        args.quant_mode,
     )
 
     # Print results
@@ -401,7 +638,11 @@ def main():
     # Export JSON report
     report = build_report(
         confusion, metrics_logger, results,
-        args.video, args.annotations, args.investigate_as,
+        args.video,
+        args.annotations,
+        args.investigate_as,
+        args.review_as,
+        args.quant_mode,
     )
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:

@@ -6,7 +6,12 @@ class AlertCard extends StatelessWidget {
 
   const AlertCard({super.key, required this.alert});
 
+  bool get _isReview => alert.status == 'REVIEW';
+
   Color _getConfidenceColor() {
+    if (_isReview) {
+      return Colors.blue.shade50;
+    }
     if (alert.confidence >= 80) {
       return Colors.red.shade100;
     } else if (alert.confidence >= 60) {
@@ -17,6 +22,9 @@ class AlertCard extends StatelessWidget {
   }
 
   Color _getConfidenceIconColor() {
+    if (_isReview) {
+      return Colors.blue.shade700;
+    }
     if (alert.confidence >= 80) {
       return Colors.red.shade700;
     } else if (alert.confidence >= 60) {
@@ -24,6 +32,14 @@ class AlertCard extends StatelessWidget {
     } else {
       return Colors.yellow.shade700;
     }
+  }
+
+  IconData _getIcon() {
+    return _isReview ? Icons.rate_review_outlined : Icons.warning_amber_rounded;
+  }
+
+  String _getTitle() {
+    return _isReview ? 'Manual Review' : 'Violence Alert';
   }
 
   @override
@@ -41,7 +57,7 @@ class AlertCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.warning_amber_rounded,
+                  _getIcon(),
                   color: _getConfidenceIconColor(),
                   size: 28,
                 ),
@@ -51,7 +67,7 @@ class AlertCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Violence Alert',
+                        _getTitle(),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

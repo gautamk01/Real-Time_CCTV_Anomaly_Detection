@@ -1,5 +1,6 @@
 // Violence Alert Model
 class ViolenceAlert {
+  final String status;
   final String timestamp;
   final int confidence;
   final String reason;
@@ -9,6 +10,7 @@ class ViolenceAlert {
   final DateTime receivedAt;
 
   ViolenceAlert({
+    required this.status,
     required this.timestamp,
     required this.confidence,
     required this.reason,
@@ -20,6 +22,7 @@ class ViolenceAlert {
 
   factory ViolenceAlert.fromFCM(Map<String, dynamic> data) {
     return ViolenceAlert(
+      status: data['status'] ?? 'ALERT',
       timestamp: data['timestamp'] ?? 'Unknown',
       confidence: int.tryParse(data['confidence'] ?? '0') ?? 0,
       reason: data['reason'] ?? 'No details provided',
@@ -42,4 +45,6 @@ class ViolenceAlert {
       return '${difference.inDays}d ago';
     }
   }
+
+  bool get isReview => status == 'REVIEW';
 }

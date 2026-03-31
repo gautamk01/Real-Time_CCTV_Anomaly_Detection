@@ -45,11 +45,12 @@ def match_investigation_to_annotation(
 class ConfusionMatrix:
     """Binary confusion matrix for violence detection evaluation.
 
-    Maps 3-class system output (ALERT, CLEAR, INVESTIGATE) to binary
+    Maps system output (ALERT, CLEAR, INVESTIGATE, REVIEW) to binary
     (VIOLENCE / NO_VIOLENCE) and computes standard classification metrics.
     """
 
-    def __init__(self, investigate_as: str = "VIOLENCE"):
+    def __init__(self, investigate_as: str = "VIOLENCE",
+                 review_as: str = "EXCLUDE"):
         """Initialize confusion matrix.
 
         Args:
@@ -57,13 +58,23 @@ class ConfusionMatrix:
                 "VIOLENCE" - treat as positive (default, safety-first)
                 "NO_VIOLENCE" - treat as negative
                 "EXCLUDE" - exclude from metrics
+            review_as: How to map REVIEW status.
+                "VIOLENCE" - treat as positive
+                "NO_VIOLENCE" - treat as negative
+                "EXCLUDE" - exclude from metrics (default)
         """
         if investigate_as not in ("VIOLENCE", "NO_VIOLENCE", "EXCLUDE"):
             raise ValueError(
                 f"investigate_as must be VIOLENCE, NO_VIOLENCE, or EXCLUDE, "
                 f"got {investigate_as}"
             )
+        if review_as not in ("VIOLENCE", "NO_VIOLENCE", "EXCLUDE"):
+            raise ValueError(
+                f"review_as must be VIOLENCE, NO_VIOLENCE, or EXCLUDE, "
+                f"got {review_as}"
+            )
         self.investigate_as = investigate_as
+        self.review_as = review_as
         self.tp = 0  # True Positive: predicted VIOLENCE, actual VIOLENCE
         self.fp = 0  # False Positive: predicted VIOLENCE, actual NO_VIOLENCE
         self.tn = 0  # True Negative: predicted NO_VIOLENCE, actual NO_VIOLENCE
@@ -86,6 +97,10 @@ class ConfusionMatrix:
             if self.investigate_as == "EXCLUDE":
                 return None
             return self.investigate_as
+        elif status == "REVIEW":
+            if self.review_as == "EXCLUDE":
+                return None
+            return self.review_as
         return "NO_VIOLENCE"
 
     def add(self, prediction_status: str, ground_truth_label: str,
@@ -93,7 +108,7 @@ class ConfusionMatrix:
         """Add a prediction/ground-truth pair.
 
         Args:
-            prediction_status: System output (ALERT, CLEAR, INVESTIGATE)
+            prediction_status: System output (ALERT, CLEAR, INVESTIGATE, REVIEW)
             ground_truth_label: Ground truth (VIOLENCE, NO_VIOLENCE)
             confidence: System confidence score (0-100)
             timestamp: Investigation trigger timestamp
@@ -186,6 +201,7 @@ class ConfusionMatrix:
             "fpr": round(self.fpr, 4),
             "fnr": round(self.fnr, 4),
             "investigate_as": self.investigate_as,
+            "review_as": self.review_as,
         }
 
     def print_matrix(self):
@@ -193,6 +209,7 @@ class ConfusionMatrix:
         print(f"\n{'='*60}")
         print(f"  CONFUSION MATRIX (Binary: Violence vs No-Violence)")
         print(f"  INVESTIGATE mapped as: {self.investigate_as}")
+        print(f"  REVIEW mapped as:      {self.review_as}")
         print(f"{'='*60}")
         print()
         print(f"                    Predicted")

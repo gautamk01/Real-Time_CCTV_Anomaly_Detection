@@ -20,16 +20,26 @@ class MetricsLogger:
         self._system_samples: List[dict] = []
         self._next_id = 1
 
-    def start_investigation(self, video_file: str, trigger_ts: str) -> int:
+    def start_investigation(
+        self,
+        video_file: str,
+        trigger_ts: str,
+        camera_id: Optional[str] = None,
+        queue_wait_ms: Optional[float] = None,
+        queue_depth: Optional[int] = None,
+    ) -> int:
         """Start tracking a new investigation. Returns investigation ID."""
         inv_id = self._next_id
         self._next_id += 1
         self._investigations[inv_id] = {
             "investigation_id": inv_id,
+            "camera_id": camera_id,
             "video_file": video_file,
             "trigger_timestamp": trigger_ts,
             "wall_clock_start": time.time(),
             "wall_clock_start_iso": datetime.now().isoformat(),
+            "queue_wait_ms": round(queue_wait_ms, 2) if queue_wait_ms is not None else None,
+            "queue_depth": queue_depth,
             "edge_times_ms": [],
             "cloud_times_ms": [],
             "edge_descriptions": [],
@@ -123,8 +133,11 @@ class MetricsLogger:
         all_cloud_ms = []
         all_total_ms = []
         all_tokens = []
-        status_counts = {"CLEAR": 0, "INVESTIGATE": 0, "ALERT": 0}
+        queue_waits = []
+        queue_depths = []
+        status_counts = {"CLEAR": 0, "INVESTIGATE": 0, "REVIEW": 0, "ALERT": 0}
         confidence_vals = []
+        per_camera: Dict[str, dict] = {}
 
         for inv in completed:
             all_edge_ms.extend(inv["edge_times_ms"])
@@ -132,11 +145,41 @@ class MetricsLogger:
             if inv["total_investigation_ms"] is not None:
                 all_total_ms.append(inv["total_investigation_ms"])
             all_tokens.extend(inv["estimated_prompt_tokens"])
+            if inv["queue_wait_ms"] is not None:
+                queue_waits.append(inv["queue_wait_ms"])
+            if inv["queue_depth"] is not None:
+                queue_depths.append(inv["queue_depth"])
             status = inv["final_status"]
             if status in status_counts:
                 status_counts[status] += 1
             if inv["final_confidence"] is not None:
                 confidence_vals.append(inv["final_confidence"])
+
+            camera_id = inv.get("camera_id") or "unknown"
+            camera_stats = per_camera.setdefault(
+                camera_id,
+                {
+                    "investigations": 0,
+                    "status_distribution": {
+                        "CLEAR": 0,
+                        "INVESTIGATE": 0,
+                        "REVIEW": 0,
+                        "ALERT": 0,
+                    },
+                    "avg_rounds": [],
+                    "edge_times_ms": [],
+                    "cloud_times_ms": [],
+                    "queue_wait_ms": [],
+                },
+            )
+            camera_stats["investigations"] += 1
+            if status in camera_stats["status_distribution"]:
+                camera_stats["status_distribution"][status] += 1
+            camera_stats["avg_rounds"].append(inv["rounds"])
+            camera_stats["edge_times_ms"].extend(inv["edge_times_ms"])
+            camera_stats["cloud_times_ms"].extend(inv["cloud_times_ms"])
+            if inv["queue_wait_ms"] is not None:
+                camera_stats["queue_wait_ms"].append(inv["queue_wait_ms"])
 
         def _stats(values: list) -> dict:
             if not values:
@@ -160,12 +203,25 @@ class MetricsLogger:
             if s["gpu_mem_allocated_mb"] and s["gpu_mem_allocated_mb"] > peak_gpu:
                 peak_gpu = s["gpu_mem_allocated_mb"]
 
+        per_camera_summary = {}
+        for camera_id, stats in per_camera.items():
+            per_camera_summary[camera_id] = {
+                "investigations": stats["investigations"],
+                "status_distribution": stats["status_distribution"],
+                "avg_rounds": round(statistics.mean(stats["avg_rounds"]), 2),
+                "edge_latency_ms": _stats(stats["edge_times_ms"]),
+                "cloud_latency_ms": _stats(stats["cloud_times_ms"]),
+                "queue_wait_ms": _stats(stats["queue_wait_ms"]),
+            }
+
         return {
             "total_investigations": len(completed),
             "status_distribution": status_counts,
             "edge_latency_ms": _stats(all_edge_ms),
             "cloud_latency_ms": _stats(all_cloud_ms),
             "total_investigation_ms": _stats(all_total_ms),
+            "queue_wait_ms": _stats(queue_waits),
+            "queue_depth": _stats(queue_depths),
             "estimated_tokens_per_call": _stats(all_tokens),
             "total_tokens_consumed": sum(all_tokens),
             "confidence": _stats(confidence_vals),
@@ -174,6 +230,7 @@ class MetricsLogger:
             ) if completed else 0,
             "peak_ram_mb": peak_ram,
             "peak_gpu_mb": peak_gpu,
+            "per_camera": per_camera_summary,
         }
 
     def export_json(self, path: str):
@@ -199,10 +256,11 @@ class MetricsLogger:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         fieldnames = [
-            "investigation_id", "video_file", "trigger_timestamp",
+            "investigation_id", "camera_id", "video_file", "trigger_timestamp",
             "wall_clock_start_iso", "rounds", "final_status",
             "final_confidence", "total_investigation_ms",
-            "mean_edge_ms", "mean_cloud_ms", "total_tokens",
+            "mean_edge_ms", "mean_cloud_ms", "queue_wait_ms",
+            "queue_depth", "total_tokens",
         ]
 
         with open(path, "w", newline="") as f:
@@ -214,6 +272,7 @@ class MetricsLogger:
                 tokens = inv["estimated_prompt_tokens"]
                 writer.writerow({
                     "investigation_id": inv["investigation_id"],
+                    "camera_id": inv["camera_id"] or "",
                     "video_file": inv["video_file"],
                     "trigger_timestamp": inv["trigger_timestamp"],
                     "wall_clock_start_iso": inv["wall_clock_start_iso"],
@@ -223,6 +282,8 @@ class MetricsLogger:
                     "total_investigation_ms": inv["total_investigation_ms"],
                     "mean_edge_ms": round(statistics.mean(edge_ms), 2) if edge_ms else 0,
                     "mean_cloud_ms": round(statistics.mean(cloud_ms), 2) if cloud_ms else 0,
+                    "queue_wait_ms": inv["queue_wait_ms"] or 0,
+                    "queue_depth": inv["queue_depth"] or 0,
                     "total_tokens": sum(tokens),
                 })
         print(f"[METRICS] Exported CSV to {path}")
@@ -250,6 +311,9 @@ class MetricsLogger:
         print(f"  Total  : mean={s['total_investigation_ms']['mean']}, "
               f"p50={s['total_investigation_ms']['p50']}, "
               f"p95={s['total_investigation_ms']['p95']}")
+        print(f"  Queue  : mean={s['queue_wait_ms']['mean']}, "
+              f"p50={s['queue_wait_ms']['p50']}, "
+              f"p95={s['queue_wait_ms']['p95']}")
         print(f"\n  --- Tokens ---")
         print(f"  Per call: mean={s['estimated_tokens_per_call']['mean']}")
         print(f"  Total consumed: {s['total_tokens_consumed']}")

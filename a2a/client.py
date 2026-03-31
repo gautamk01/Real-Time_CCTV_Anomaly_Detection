@@ -82,7 +82,12 @@ class A2AClient:
 
     # --- Edge Agent Methods ---
 
-    def observe(self, image: Image.Image, question: str) -> str:
+    def observe(
+        self,
+        image: Image.Image,
+        question: str,
+        max_tokens: Optional[int] = None,
+    ) -> str:
         """Full observation: encode + answer in one call.
 
         Args:
@@ -92,10 +97,14 @@ class A2AClient:
         Returns:
             Description string from the vision model
         """
+        payload = {"image_b64": self._image_to_b64(image), "question": question}
+        if max_tokens is not None:
+            payload["max_tokens"] = int(max_tokens)
+
         response = self._send(
             f"{self.edge_url}/observe",
             msg_type="observe",
-            payload={"image_b64": self._image_to_b64(image), "question": question},
+            payload=payload,
         )
         if response.status != "success":
             raise RuntimeError(f"Edge observe failed: {response.error_detail}")
@@ -119,7 +128,12 @@ class A2AClient:
             raise RuntimeError(f"Edge encode failed: {response.error_detail}")
         return response.payload["encode_id"]
 
-    def answer(self, encode_id: str, question: str) -> str:
+    def answer(
+        self,
+        encode_id: str,
+        question: str,
+        max_tokens: Optional[int] = None,
+    ) -> str:
         """Phase 2: Answer question using pre-encoded image (lightweight).
 
         Args:
@@ -129,10 +143,14 @@ class A2AClient:
         Returns:
             Answer string from the vision model
         """
+        payload = {"encode_id": encode_id, "question": question}
+        if max_tokens is not None:
+            payload["max_tokens"] = int(max_tokens)
+
         response = self._send(
             f"{self.edge_url}/answer",
             msg_type="answer",
-            payload={"encode_id": encode_id, "question": question},
+            payload=payload,
         )
         if response.status != "success":
             raise RuntimeError(f"Edge answer failed: {response.error_detail}")
