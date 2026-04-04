@@ -1,214 +1,117 @@
-"""Configuration Management for Violence Detection System."""
+"""Compatibility facade for environment-driven configuration."""
 
-import os
-import logging
 from pathlib import Path
 from typing import Dict
-from urllib.parse import urlparse
+
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+from app.config_parsers import (
+    CameraRuntimeDefaults,
+    parse_camera_runtime_settings,
+    parse_camera_sources,
+)
+from app.config_validation import (
+    print_configuration_summary,
+    validate_configuration,
+)
+from app.settings import load_settings
+
 load_dotenv()
 
 
+def _load_app_settings():
+    return load_settings(base_dir=Path(__file__).parent)
+
+
+def _apply_legacy_attributes(target, settings) -> None:
+    target.BASE_DIR = settings.paths.base_dir
+    target.VIDEOS_DIR = settings.paths.videos_dir
+
+    target.GEMINI_API_KEY = settings.api.gemini_api_key
+    target.GROQ_API_KEY = settings.api.groq_api_key
+
+    target.CLOUD_BACKEND = settings.model.cloud_backend
+    target.EDGE_MODEL_ID = settings.model.edge_model_id
+    target.CLOUD_MODEL_ID = settings.model.cloud_model_id
+    target.EDGE_QUANT_MODE = settings.model.edge_quant_mode
+    target.EDGE_INITIAL_MAX_TOKENS = settings.model.edge_initial_max_tokens
+    target.EDGE_FOLLOWUP_MAX_TOKENS = settings.model.edge_followup_max_tokens
+    target.DEVICE = settings.model.device
+
+    target.VIDEO_PATH = settings.camera.video_path
+    target.CAMERA_SOURCES = settings.camera.camera_sources
+    target.CAMERA_COOLDOWN = settings.camera.camera_cooldown
+    target.MIN_CONSECUTIVE_MOTION_FRAMES = (
+        settings.camera.min_consecutive_motion_frames
+    )
+    target.MULTI_CAMERA_MAX_INVESTIGATION_ROUNDS = (
+        settings.camera.multi_camera_max_investigation_rounds
+    )
+    target.CAMERA_OVERRIDES = settings.camera.camera_overrides
+
+    target.MOTION_THRESHOLD = settings.investigation.motion_threshold
+    target.MAX_INVESTIGATION_ROUNDS = settings.investigation.max_investigation_rounds
+    target.GPU_QUEUE_SIZE = settings.investigation.gpu_queue_size
+    target.MAX_CONCURRENT_INVESTIGATIONS = (
+        settings.investigation.max_concurrent_investigations
+    )
+    target.MOTION_BLUR_KERNEL = settings.investigation.motion_blur_kernel
+    target.MOTION_BINARY_THRESHOLD = settings.investigation.motion_binary_threshold
+    target.MOTION_DILATE_ITERATIONS = settings.investigation.motion_dilate_iterations
+
+    target.SAVE_ALERTS = settings.alerts.save_alerts
+    target.ALERTS_DIR = settings.paths.alerts_dir
+    target.BUFFER_DURATION_SECONDS = settings.alerts.buffer_duration_seconds
+    target.CLEANUP_OLD_ALERTS_DAYS = settings.alerts.cleanup_old_alerts_days
+
+    target.ENABLE_FCM_NOTIFICATIONS = (
+        settings.notifications.enable_fcm_notifications
+    )
+    target.ENABLE_REVIEW_NOTIFICATIONS = (
+        settings.notifications.enable_review_notifications
+    )
+    target.FIREBASE_CREDENTIALS_PATH = settings.paths.firebase_credentials_path
+    target.FCM_TOPIC = settings.notifications.fcm_topic
+
+    target.ENABLE_A2A = settings.agents.enable_a2a
+    target.EDGE_AGENT_URL = settings.agents.edge_agent_url
+    target.CLOUD_AGENT_URL = settings.agents.cloud_agent_url
+    target.RAG_AGENT_URL = settings.agents.rag_agent_url
+
+    target.ENABLE_RAG = settings.rag.enable_rag
+    target.RAG_DB_DIR = settings.paths.rag_db_dir
+    target.RAG_EMBEDDING_MODEL = settings.rag.embedding_model
+    target.RAG_TOP_K = settings.rag.top_k
+
+
 class Config:
-    """Configuration manager using environment variables."""
+    """Legacy configuration facade backed by typed helper modules."""
 
-    # Project paths
-    BASE_DIR = Path(__file__).parent
-    VIDEOS_DIR = BASE_DIR / "videos"
-
-    # API Configuration
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-
-    # Cloud Backend: "groq" or "ollama"
-    CLOUD_BACKEND = os.getenv("CLOUD_BACKEND", "groq").lower()
-
-    # Model Configuration
-    EDGE_MODEL_ID = "vikhyatk/moondream2"
-    CLOUD_MODEL_ID = os.getenv(
-        "CLOUD_MODEL_ID",
-        "qwen3:8b" if os.getenv("CLOUD_BACKEND", "groq").lower() == "ollama"
-        else "llama-3.3-70b-versatile",
-    )
-    EDGE_QUANT_MODE = os.getenv("EDGE_QUANT_MODE", "auto")
-    EDGE_INITIAL_MAX_TOKENS = int(os.getenv("EDGE_INITIAL_MAX_TOKENS", "24"))
-    EDGE_FOLLOWUP_MAX_TOKENS = int(os.getenv("EDGE_FOLLOWUP_MAX_TOKENS", "16"))
-    
-    # Device Configuration
-    DEVICE = os.getenv("DEVICE", "auto")  # "cuda", "cpu", or "auto"
-    
-    # Video Configuration
-    VIDEO_PATH = os.getenv("VIDEO_PATH", str(VIDEOS_DIR / "test_video.mp4"))
-
-    # Multi-Camera Configuration
-    # Format: comma-separated "id:path" pairs
-    # e.g., "cam1:/dev/video0,cam2:rtsp://192.168.1.100/stream"
-    # If empty, falls back to single VIDEO_PATH as "cam0"
-    CAMERA_SOURCES = os.getenv("CAMERA_SOURCES", "")
-
-    # Per-camera cooldown after investigation (seconds)
-    CAMERA_COOLDOWN = float(os.getenv("CAMERA_COOLDOWN", "2.0"))
-    MIN_CONSECUTIVE_MOTION_FRAMES = int(
-        os.getenv("MIN_CONSECUTIVE_MOTION_FRAMES", "2")
-    )
-    MULTI_CAMERA_MAX_INVESTIGATION_ROUNDS = int(
-        os.getenv("MULTI_CAMERA_MAX_INVESTIGATION_ROUNDS", "2")
-    )
-    # Format:
-    #   cam1:threshold=2500,cooldown=2.5,min_motion_frames=3;cam2:threshold=1800
-    CAMERA_OVERRIDES = os.getenv("CAMERA_OVERRIDES", "")
-
-    # Detection Parameters
-    MOTION_THRESHOLD = int(os.getenv("MOTION_THRESHOLD", "2000"))
-    MAX_INVESTIGATION_ROUNDS = int(os.getenv("MAX_INVESTIGATION_ROUNDS", "3"))
-
-    # GPU Inference Server (Distributed Architecture)
-    GPU_QUEUE_SIZE = int(os.getenv("GPU_QUEUE_SIZE", "32"))
-    MAX_CONCURRENT_INVESTIGATIONS = int(
-        os.getenv("MAX_CONCURRENT_INVESTIGATIONS", "0")
-    )  # 0 = one per camera (default)
-
-    # Alert Saving
-    SAVE_ALERTS = os.getenv("SAVE_ALERTS", "true").lower() == "true"
-    ALERTS_DIR = BASE_DIR / os.getenv("ALERTS_DIR", "alerts")
-    BUFFER_DURATION_SECONDS = int(os.getenv("BUFFER_DURATION_SECONDS", "10"))
-    CLEANUP_OLD_ALERTS_DAYS = int(os.getenv("CLEANUP_OLD_ALERTS_DAYS", "7"))
-    
-    # Firebase Cloud Messaging
-    ENABLE_FCM_NOTIFICATIONS = os.getenv("ENABLE_FCM_NOTIFICATIONS", "false").lower() == "true"
-    ENABLE_REVIEW_NOTIFICATIONS = os.getenv("ENABLE_REVIEW_NOTIFICATIONS", "false").lower() == "true"
-    FIREBASE_CREDENTIALS_PATH = BASE_DIR / os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase_key.json")
-    FCM_TOPIC = os.getenv("FCM_TOPIC", "violence_alerts")
-
-    
-    # A2A (Agent-to-Agent) Communication
-    ENABLE_A2A = os.getenv("ENABLE_A2A", "false").lower() == "true"
-    EDGE_AGENT_URL = os.getenv("EDGE_AGENT_URL", "http://localhost:8001")
-    CLOUD_AGENT_URL = os.getenv("CLOUD_AGENT_URL", "http://localhost:8002")
-    RAG_AGENT_URL = os.getenv("RAG_AGENT_URL", "http://localhost:8003")
-
-    # RAG (Retrieval-Augmented Generation)
-    ENABLE_RAG = os.getenv("ENABLE_RAG", "true").lower() == "true"
-    RAG_DB_DIR = BASE_DIR / os.getenv("RAG_DB_DIR", "rag_db")
-    RAG_EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-    RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
-
-    # Frame Processing
-    MOTION_BLUR_KERNEL = (5, 5)
-    MOTION_BINARY_THRESHOLD = 20
-    MOTION_DILATE_ITERATIONS = 3
-    
     @classmethod
     def get_cameras(cls) -> Dict[str, str]:
-        """Return {camera_id: video_path} mapping.
+        """Return the configured camera source mapping."""
 
-        If CAMERA_SOURCES is set, parses it. Otherwise falls back
-        to single VIDEO_PATH as 'cam0' for backward compatibility.
-
-        Format: comma-separated "id:path" pairs.
-        Uses first colon as delimiter so RTSP paths like
-        cam1:rtsp://host:8554/stream work correctly.
-        """
-        if cls.CAMERA_SOURCES:
-            cameras: Dict[str, str] = {}
-            for entry in cls.CAMERA_SOURCES.split(","):
-                entry = entry.strip()
-                if not entry:
-                    continue
-                if ":" not in entry:
-                    logging.warning(
-                        "Config: ignoring malformed CAMERA_SOURCES entry %r "
-                        "(expected 'id:path')", entry,
-                    )
-                    continue
-                cam_id, path = entry.split(":", 1)
-                cameras[cam_id.strip()] = path.strip()
-            return cameras
-        return {"cam0": cls.VIDEO_PATH}
+        return parse_camera_sources(cls.CAMERA_SOURCES, cls.VIDEO_PATH)
 
     @classmethod
     def get_camera_runtime_settings(cls) -> Dict[str, Dict[str, float]]:
-        """Return per-camera runtime settings with defaults + overrides."""
-        settings: Dict[str, Dict[str, float]] = {
-            cam_id: {
-                "motion_threshold": cls.MOTION_THRESHOLD,
-                "cooldown_seconds": cls.CAMERA_COOLDOWN,
-                "min_consecutive_motion_frames": cls.MIN_CONSECUTIVE_MOTION_FRAMES,
-            }
-            for cam_id in cls.get_cameras()
-        }
+        """Return per-camera runtime settings with defaults and overrides."""
 
-        raw_overrides = cls.CAMERA_OVERRIDES.strip()
-        if not raw_overrides:
-            return settings
-
-        for camera_chunk in raw_overrides.split(";"):
-            camera_chunk = camera_chunk.strip()
-            if not camera_chunk:
-                continue
-            if ":" not in camera_chunk:
-                logging.warning(
-                    "Config: ignoring malformed CAMERA_OVERRIDES entry %r",
-                    camera_chunk,
-                )
-                continue
-
-            cam_id, overrides_text = camera_chunk.split(":", 1)
-            cam_id = cam_id.strip()
-            if cam_id not in settings:
-                logging.warning(
-                    "Config: ignoring CAMERA_OVERRIDES for unknown camera %r",
-                    cam_id,
-                )
-                continue
-
-            for item in overrides_text.split(","):
-                item = item.strip()
-                if not item:
-                    continue
-                if "=" not in item:
-                    logging.warning(
-                        "Config: ignoring malformed override %r for %s",
-                        item,
-                        cam_id,
-                    )
-                    continue
-
-                key, value = item.split("=", 1)
-                key = key.strip().lower()
-                value = value.strip()
-
-                try:
-                    if key in ("threshold", "motion_threshold"):
-                        settings[cam_id]["motion_threshold"] = int(value)
-                    elif key in ("cooldown", "cooldown_seconds"):
-                        settings[cam_id]["cooldown_seconds"] = float(value)
-                    elif key in (
-                        "min_motion_frames",
-                        "min_consecutive_motion_frames",
-                    ):
-                        settings[cam_id]["min_consecutive_motion_frames"] = int(value)
-                    else:
-                        logging.warning(
-                            "Config: ignoring unknown CAMERA_OVERRIDES key %r for %s",
-                            key,
-                            cam_id,
-                        )
-                except ValueError:
-                    logging.warning(
-                        "Config: ignoring invalid CAMERA_OVERRIDES value %r for %s:%s",
-                        value,
-                        cam_id,
-                        key,
-                    )
-
-        return settings
+        defaults = CameraRuntimeDefaults(
+            motion_threshold=cls.MOTION_THRESHOLD,
+            cooldown_seconds=cls.CAMERA_COOLDOWN,
+            min_consecutive_motion_frames=cls.MIN_CONSECUTIVE_MOTION_FRAMES,
+        )
+        return parse_camera_runtime_settings(
+            cls.CAMERA_OVERRIDES,
+            cls.get_cameras().keys(),
+            defaults,
+        )
 
     @classmethod
     def get_effective_max_rounds(cls) -> int:
-        """Clamp rounds in multi-camera mode to protect throughput."""
+        """Clamp investigation rounds in multi-camera mode."""
+
         if len(cls.get_cameras()) > 1:
             return min(
                 cls.MAX_INVESTIGATION_ROUNDS,
@@ -217,103 +120,39 @@ class Config:
         return cls.MAX_INVESTIGATION_ROUNDS
 
     @classmethod
-    def validate(cls):
+    def validate(cls) -> bool:
         """Validate critical configuration values."""
-        errors = []
-        
-        if not cls.GROQ_API_KEY:
-            errors.append("❌ GROQ_API_KEY not set in .env file")
-        
-        cameras = cls.get_cameras()
-        for cam_id, path in cameras.items():
-            parsed = urlparse(path)
-            if parsed.scheme in ("rtsp", "rtsps", "http", "https"):
-                continue  # network stream — skip file-existence check
-            if not Path(path).exists():
-                errors.append(f"❌ Video not found for {cam_id}: {path}")
-        
-        if errors:
-            print("\n" + "="*60)
-            print("🔴 CONFIGURATION ERRORS")
-            print("="*60)
-            for error in errors:
-                print(error)
-            print("\nPlease check your .env file and video path.")
-            print("="*60 + "\n")
-            return False
-        
-        return True
-    
-    @classmethod
-    def print_info(cls):
-        """Print configuration information."""
-        import torch
-        
-        device = cls.DEVICE
-        if device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        
-        print("\n" + "="*60)
-        print("⚙️  CONFIGURATION")
-        print("="*60)
-        print(f"Device: {device}")
-        print(f"Edge Model: {cls.EDGE_MODEL_ID}")
-        print(f"Edge Quantization: {cls.EDGE_QUANT_MODE}")
-        print(
-            "Edge Token Budgets: "
-            f"initial={cls.EDGE_INITIAL_MAX_TOKENS}, "
-            f"follow-up={cls.EDGE_FOLLOWUP_MAX_TOKENS}"
+
+        errors = validate_configuration(
+            groq_api_key=cls.GROQ_API_KEY,
+            cameras=cls.get_cameras(),
         )
-        print(f"Cloud Model: {cls.CLOUD_MODEL_ID}")
+        if not errors:
+            return True
+
+        print("\n" + "=" * 60)
+        print("🔴 CONFIGURATION ERRORS")
+        print("=" * 60)
+        for error in errors:
+            print(error)
+        print("\nPlease check your .env file and video path.")
+        print("=" * 60 + "\n")
+        return False
+
+    @classmethod
+    def print_info(cls) -> None:
+        """Print configuration information."""
+
         cameras = cls.get_cameras()
         camera_settings = cls.get_camera_runtime_settings()
-        if len(cameras) == 1 and "cam0" in cameras:
-            print(f"Video: {Path(cls.VIDEO_PATH).name}")
-        else:
-            print(f"Cameras: {len(cameras)}")
-            for cam_id, path in cameras.items():
-                print(f"  {cam_id}: {Path(path).name}")
-        if len(cameras) == 1:
-            cam_id = next(iter(cameras))
-            camera_cfg = camera_settings[cam_id]
-            print(f"Motion Threshold: {int(camera_cfg['motion_threshold'])}")
-            print(
-                "Motion Gating: "
-                f"{int(camera_cfg['min_consecutive_motion_frames'])} consecutive frames"
-            )
-            print(f"Camera Cooldown: {camera_cfg['cooldown_seconds']:.1f}s")
-        else:
-            print(f"Base Motion Threshold: {cls.MOTION_THRESHOLD}")
-            print(
-                "Base Motion Gating: "
-                f"{cls.MIN_CONSECUTIVE_MOTION_FRAMES} consecutive frames"
-            )
-            print(f"Base Camera Cooldown: {cls.CAMERA_COOLDOWN:.1f}s")
-            override_count = sum(
-                1 for cfg in camera_settings.values()
-                if int(cfg["motion_threshold"]) != cls.MOTION_THRESHOLD
-                or float(cfg["cooldown_seconds"]) != cls.CAMERA_COOLDOWN
-                or int(cfg["min_consecutive_motion_frames"])
-                != cls.MIN_CONSECUTIVE_MOTION_FRAMES
-            )
-            if override_count:
-                print(f"Camera Overrides: {override_count} camera(s)")
-        effective_rounds = cls.get_effective_max_rounds()
-        if effective_rounds != cls.MAX_INVESTIGATION_ROUNDS:
-            print(
-                "Max Investigation Rounds: "
-                f"{effective_rounds} (multi-camera cap from {cls.MAX_INVESTIGATION_ROUNDS})"
-            )
-        else:
-            print(f"Max Investigation Rounds: {cls.MAX_INVESTIGATION_ROUNDS}")
-        print(f"Save Alerts: {'Yes' if cls.SAVE_ALERTS else 'No'}")
-        if cls.SAVE_ALERTS:
-            print(f"Alerts Directory: {cls.ALERTS_DIR}")
-            print(f"Buffer Duration: {cls.BUFFER_DURATION_SECONDS}s")
-        print(f"A2A Mode: {'Networked' if cls.ENABLE_A2A else 'Direct (local)'}")
-        if cls.ENABLE_A2A:
-            print(f"Edge Agent: {cls.EDGE_AGENT_URL}")
-            print(f"Cloud Agent: {cls.CLOUD_AGENT_URL}")
-            print(f"RAG Agent: {cls.RAG_AGENT_URL}")
-        print(f"RAG: {'Enabled' if cls.ENABLE_RAG else 'Disabled'}")
-        print("="*60 + "\n")
+        print_configuration_summary(
+            cls,
+            cameras,
+            camera_settings,
+            cls.get_effective_max_rounds(),
+        )
+
+
+_SETTINGS = _load_app_settings()
+Config._settings = _SETTINGS
+_apply_legacy_attributes(Config, _SETTINGS)

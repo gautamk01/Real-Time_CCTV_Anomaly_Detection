@@ -343,10 +343,22 @@ CLOUD_MODEL_ID=qwen3:8b
 ```
 violence_detection_system/
 ├── main.py                      # Entry point — startup, display, shutdown
+├── annotate.py                  # Root wrapper for the annotation tool
+├── benchmark.py                 # Root wrapper for the benchmark tool
 ├── config.py                    # Configuration manager (env vars)
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Configuration template
 ├── run.sh                       # Quick start script
+│
+├── app/                         # Application orchestration layer
+│   ├── orchestrator.py          # Startup/shutdown lifecycle
+│   ├── bootstrap.py             # Model and pipeline assembly
+│   ├── display.py               # OpenCV display loop
+│   ├── capture.py               # Camera capture thread helpers
+│   ├── settings.py              # Typed env-backed settings
+│   ├── config_parsers.py        # Camera/env parsing helpers
+│   ├── config_validation.py     # Config validation and summary output
+│   └── runtime.py               # Shared runtime state
 │
 ├── core/                        # Core detection pipeline
 │   ├── camera_manager.py        # Multi-camera source manager
@@ -378,10 +390,19 @@ violence_detection_system/
 │   ├── rag_agent.py             # RAG query agent
 │   └── bootstrap.py             # Initial knowledge base seeding
 │
+├── tools/                       # Standalone developer/analysis CLIs
+│   ├── annotate_cli.py          # Annotation tool implementation
+│   └── benchmark_cli.py         # Benchmark tool implementation
+│
 ├── alerts/                      # Saved alert evidence packages
 ├── rag_db/                      # Persistent vector database
-├── docs/                        # Documentation & architecture plans
+├── docs/                        # Documentation, research, and notes
+│   ├── guides/
+│   ├── performance/
+│   ├── research/
+│   └── notes/
 ├── flutter_app/                 # Mobile companion app
+├── tests/                       # Smoke tests for config/startup
 └── videos/                      # Test video files
 ```
 
