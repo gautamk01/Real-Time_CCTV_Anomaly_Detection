@@ -5,16 +5,14 @@ from typing import Dict
 
 from dotenv import load_dotenv
 
-from app.config_parsers import (
+from app.config import (
     CameraRuntimeDefaults,
     parse_camera_runtime_settings,
     parse_camera_sources,
-)
-from app.config_validation import (
     print_configuration_summary,
     validate_configuration,
+    load_settings,
 )
-from app.settings import load_settings
 
 load_dotenv()
 

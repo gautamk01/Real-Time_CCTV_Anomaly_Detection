@@ -35,7 +35,7 @@ from PIL import Image
 
 from config import Config
 from core import FrameBuffer, MotionDetector, AIInvestigator, MetricsLogger
-from core.evaluation import (
+from core.output.evaluation import (
     ConfusionMatrix,
     match_investigation_to_annotation,
     generate_roc_data,

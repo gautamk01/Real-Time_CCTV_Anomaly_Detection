@@ -86,7 +86,7 @@ def _init_fcm(config):
         return None
 
     try:
-        from core.fcm_notifier import FCMNotifier
+        from core.output.fcm_notifier import FCMNotifier
 
         return FCMNotifier(
             credentials_path=config.FIREBASE_CREDENTIALS_PATH,

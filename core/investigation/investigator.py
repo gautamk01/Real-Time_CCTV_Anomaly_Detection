@@ -206,7 +206,7 @@ class AIInvestigator:
         if not self.save_alerts or len(self.frame_buffer) == 0:
             return None
 
-        from .alert_saver import save_alert_incident
+        from ..output.alert_saver import save_alert_incident
 
         frames_data = list(self.frame_buffer)
         return save_alert_incident(

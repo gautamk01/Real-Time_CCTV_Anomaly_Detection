@@ -1,21 +1,35 @@
-"""Core Detection Logic."""
+"""Core Detection Logic.
 
-from .frame_buffer import FrameBuffer
-from .motion_detector import MotionDetector
-from .investigator import AIInvestigator
-from .metrics_logger import MetricsLogger
-from .evaluation import ConfusionMatrix
-from .motion_queue import MotionQueue
-from .camera_manager import CameraManager, CameraSource
-from .inference_server import InferenceServer, RequestPriority
-from .camera_pipeline import CameraPipeline
-from . import alert_saver
-from . import fcm_notifier
+Sub-packages:
+    detection/      — Frame buffering, motion detection, camera management
+    investigation/  — AI investigator, GPU inference server, camera pipeline
+    output/         — Alert saving, FCM notifications, metrics, evaluation
+"""
 
-#__all__ is a gatekeeper ONLY for wildcard imports.
+from .detection.frame_buffer import FrameBuffer
+from .detection.motion_detector import MotionDetector
+from .detection.motion_queue import MotionQueue
+from .detection.camera_manager import CameraManager, CameraSource
+from .investigation.investigator import AIInvestigator
+from .investigation.inference_server import InferenceServer, RequestPriority
+from .investigation.camera_pipeline import CameraPipeline
+from .output.metrics_logger import MetricsLogger
+from .output.evaluation import ConfusionMatrix
+from .output import alert_saver
+from .output import fcm_notifier
+
 __all__ = [
-    'FrameBuffer', 'MotionDetector', 'AIInvestigator', 'MetricsLogger',
-    'ConfusionMatrix', 'MotionQueue', 'CameraManager', 'CameraSource',
-    'InferenceServer', 'RequestPriority', 'CameraPipeline',
-    'alert_saver', 'fcm_notifier',
+    "FrameBuffer",
+    "MotionDetector",
+    "MotionQueue",
+    "CameraManager",
+    "CameraSource",
+    "AIInvestigator",
+    "InferenceServer",
+    "RequestPriority",
+    "CameraPipeline",
+    "MetricsLogger",
+    "ConfusionMatrix",
+    "alert_saver",
+    "fcm_notifier",
 ]

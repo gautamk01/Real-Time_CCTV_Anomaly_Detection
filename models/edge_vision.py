@@ -1,12 +1,13 @@
 """Edge Vision Model - Moondream2 Wrapper with Latency-Oriented Optimizations."""
 
 import gc
-import hashlib
 import os
 import sys
 import traceback
+import warnings
 from typing import Optional
 
+import numpy as np
 import torch
 from PIL import Image
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
@@ -46,7 +47,7 @@ class EdgeVision:
 
         self.requested_quant_mode = self._normalize_quant_mode(quant_mode)
         self.loaded_quant_mode = "none"
-        self._enc_cache_key: Optional[str] = None
+        self._enc_cache_img: Optional[np.ndarray] = None
         self._enc_cache_val = None
 
         print(f"🔧 [EDGE] Loading {model_id} on {self.device}...")
@@ -61,6 +62,7 @@ class EdgeVision:
 
         if self.loaded_quant_mode in {"8bit", "4bit"}:
             self._patch_linear_for_bnb()
+            self._cast_nonquant_to_fp16()
 
         self._apply_single_crop_optimization()
 
@@ -174,6 +176,10 @@ class EdgeVision:
         """Patch Moondream helper functions so bitsandbytes modules work correctly."""
         import torch.nn.functional as _F
 
+        warnings.filterwarnings(
+            "ignore", message="MatMul8bitLt: inputs will be cast from"
+        )
+
         inner_model = self.model.model
         moondream_mod = sys.modules[type(inner_model).__module__]
         package = moondream_mod.__name__.rsplit(".", 1)[0]
@@ -196,6 +202,20 @@ class EdgeVision:
         layers_mod.layer_norm = _mixed_dtype_layer_norm
         vision_mod.layer_norm = _mixed_dtype_layer_norm
         text_mod.layer_norm = _mixed_dtype_layer_norm
+
+    def _cast_nonquant_to_fp16(self):
+        """One-time cast of non-quantized params to float16 to eliminate runtime dtype casts."""
+        import bitsandbytes as bnb
+
+        count = 0
+        for module in self.model.modules():
+            if isinstance(module, (bnb.nn.Linear8bitLt, bnb.nn.Linear4bit)):
+                continue
+            for p in module.parameters(recurse=False):
+                if p.dtype != torch.float16 and p.is_floating_point():
+                    p.data = p.data.to(torch.float16)
+                    count += 1
+        print(f"   🔄 Cast {count} params to float16 (eliminates runtime dtype casts)")
 
     def _apply_single_crop_optimization(self):
         """Skip redundant local-crop processing for <= 378x378 inputs."""
@@ -239,9 +259,14 @@ class EdgeVision:
             return image.resize(self.TARGET_SIZE, Image.LANCZOS)
         return image
 
-    def _image_cache_key(self, image: Image.Image) -> str:
-        digest = hashlib.blake2b(image.tobytes(), digest_size=16).hexdigest()
-        return f"{image.width}x{image.height}:{digest}"
+    def _is_perceptually_similar(self, img_array: np.ndarray, threshold: float = 5.0) -> bool:
+        """Fast perceptual similarity check (~0.2ms) using mean absolute pixel difference."""
+        if self._enc_cache_img is None or img_array.shape != self._enc_cache_img.shape:
+            return False
+        diff = np.mean(np.abs(
+            img_array.astype(np.float32) - self._enc_cache_img.astype(np.float32)
+        ))
+        return diff < threshold
 
     def _query_settings(self, max_tokens: int) -> dict:
         return {
@@ -252,15 +277,15 @@ class EdgeVision:
     def encode(self, image: Image.Image):
         """Phase 1: Encode image into embeddings."""
         resized = self._resize_image(image)
-        cache_key = self._image_cache_key(resized)
+        img_array = np.asarray(resized)
 
-        if self._enc_cache_key == cache_key and self._enc_cache_val is not None:
+        if self._is_perceptually_similar(img_array) and self._enc_cache_val is not None:
             return self._enc_cache_val
 
         with torch.inference_mode():
             enc_image = self.model.encode_image(resized)
 
-        self._enc_cache_key = cache_key
+        self._enc_cache_img = img_array.copy()
         self._enc_cache_val = enc_image
         return enc_image
 
@@ -315,7 +340,7 @@ class EdgeVision:
 
     def clear_cache(self):
         """Clear GPU memory and the encoded-image cache."""
-        self._enc_cache_key = None
+        self._enc_cache_img = None
         self._enc_cache_val = None
         if self.device == "cuda":
             torch.cuda.empty_cache()
